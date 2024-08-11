@@ -1,6 +1,6 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using Cinemachine;
 
 public class ThirdPersonCam : MonoBehaviour
 {
@@ -11,7 +11,7 @@ public class ThirdPersonCam : MonoBehaviour
     public Rigidbody rb;
 
     public float rotationSpeed;
-
+    public CinemachineFreeLook cinemachineFreeLook;
 
     private void Start()
     {
@@ -21,10 +21,9 @@ public class ThirdPersonCam : MonoBehaviour
 
     private void Update()
     {
-        // rotate orientation
+        // Rotate orientation
         Vector3 viewDir = player.position - new Vector3(transform.position.x, player.position.y, transform.position.z);
         orientation.forward = viewDir.normalized;
-
 
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
@@ -33,5 +32,16 @@ public class ThirdPersonCam : MonoBehaviour
         if (inputDir != Vector3.zero)
             playerObj.forward = Vector3.Slerp(playerObj.forward, inputDir.normalized, Time.deltaTime * rotationSpeed);
 
+        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5))
+        {
+            StartCoroutine(RecenterCamera(0.5f));
+        }
+    }
+
+    private IEnumerator RecenterCamera(float duration)
+    {
+        cinemachineFreeLook.m_RecenterToTargetHeading.m_enabled = true;
+        yield return new WaitForSeconds(duration);
+        cinemachineFreeLook.m_RecenterToTargetHeading.m_enabled = false;
     }
 }

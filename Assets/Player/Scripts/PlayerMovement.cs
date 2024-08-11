@@ -8,15 +8,15 @@ public class PlayerMovement : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed;
 
-    public float groundDrag;
+    public float groundDrag = 5f; // Increase this value to reduce sliding
 
     public float jumpForce;
     public float jumpCooldown;
-    public float airMultiplier;
     bool readyToJump;
 
-    [HideInInspector] public float walkSpeed;
-    [HideInInspector] public float sprintSpeed;
+
+    [Header("Animator")]
+    public Animator anim;
 
     [Header("Ground Check")]
     public float playerHeight;
@@ -32,6 +32,10 @@ public class PlayerMovement : MonoBehaviour
 
     Rigidbody rb;
 
+    // Variable to track the number of jumps
+    private int jumpCount = 0;
+    public int maxJumps = 2;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -43,10 +47,19 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         // ground check
-        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+        bool wasGrounded = grounded;
+        grounded = Physics.Raycast(orientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+
+        // Check if the player has just landed
+        if (!wasGrounded && grounded)
+        {
+            anim.SetBool("isJumping", false);
+            // Reset jump count when grounded
+            jumpCount = 0;
+            readyToJump = true;
+        }
 
         MyInput();
-        SpeedControl();
 
         // handle drag
         if (grounded)
@@ -65,11 +78,15 @@ public class PlayerMovement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
 
+        float speed = new Vector2(horizontalInput, verticalInput).magnitude;
+
+        anim.SetFloat("Speed", speed);
+
         // when to jump
-        if((Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.JoystickButton1)) && readyToJump && grounded)
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) && readyToJump && jumpCount < maxJumps)
         {
             readyToJump = false;
-
+            jumpCount++;
             Jump();
 
             Invoke(nameof(ResetJump), jumpCooldown);
@@ -81,13 +98,15 @@ public class PlayerMovement : MonoBehaviour
         // calculate movement direction
         moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-        // on ground
-        if(grounded)
-            rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
+        rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
 
-        // in air
-        else if(!grounded)
-            rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
+        // Clamping the velocity to moveSpeed to prevent sliding
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        if (flatVel.magnitude > moveSpeed)
+        {
+            Vector3 limitedVel = flatVel.normalized * moveSpeed;
+            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+        }
     }
 
     private void SpeedControl()
@@ -95,7 +114,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
         // limit velocity if needed
-        if(flatVel.magnitude > moveSpeed)
+        if (flatVel.magnitude > moveSpeed)
         {
             Vector3 limitedVel = flatVel.normalized * moveSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
@@ -106,11 +125,14 @@ public class PlayerMovement : MonoBehaviour
     {
         // reset y velocity
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        anim.SetBool("isJumping", true);
 
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
+
     private void ResetJump()
     {
         readyToJump = true;
     }
+
 }

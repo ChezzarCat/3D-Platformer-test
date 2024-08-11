@@ -3,7 +3,12 @@ guid: 23ff6f091b1981b41a0f621b59af9e76
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GuiderY
+    second: {fileID: 2100000, guid: c5985402af00b8a4db62f43685c14e68, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
