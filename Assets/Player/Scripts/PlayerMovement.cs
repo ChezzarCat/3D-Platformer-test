@@ -1,3 +1,11 @@
+/*
+
+(\(\    Hi!!!
+( -.-)
+o_(")(") 
+
+*/
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,11 +15,12 @@ public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed;
-
     public float groundDrag = 5f; // Increase this value to reduce sliding
-
     public float jumpForce;
     public float jumpCooldown;
+    public ParticleSystem runParticles;
+    private int jumpCount = 0;
+    public int maxJumps = 1;    //There was gonna be like double jump but it was scrapped due to it being useless in this type of game
     bool readyToJump;
 
 
@@ -31,11 +40,6 @@ public class PlayerMovement : MonoBehaviour
     Vector3 moveDirection;
 
     Rigidbody rb;
-
-    // Variable to track the number of jumps
-    private int jumpCount = 0;
-    public int maxJumps = 2;
-
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -46,15 +50,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        // ground check
         bool wasGrounded = grounded;
         grounded = Physics.Raycast(orientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
 
-        // Check if the player has just landed
         if (!wasGrounded && grounded)
         {
             anim.SetBool("isJumping", false);
-            // Reset jump count when grounded
             jumpCount = 0;
             readyToJump = true;
         }
@@ -81,6 +82,15 @@ public class PlayerMovement : MonoBehaviour
         float speed = new Vector2(horizontalInput, verticalInput).magnitude;
 
         anim.SetFloat("Speed", speed);
+        
+
+        if (speed > 0.01f && grounded)
+            if (!runParticles.isPlaying)
+                runParticles.Play();
+        else
+            if (runParticles.isPlaying)
+                runParticles.Stop();
+
 
         // when to jump
         if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) && readyToJump && jumpCount < maxJumps)
