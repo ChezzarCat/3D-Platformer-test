@@ -6,6 +6,7 @@ using TMPro;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement")]
+    public ThirdPersonCam thirdPersonCam;
     public float walkSpeed;
     public float runSpeed;
     public float groundDrag = 5f; // Increase this value to reduce sliding
@@ -17,7 +18,9 @@ public class PlayerMovement : MonoBehaviour
     public ParticleSystem jumpBurstParticles;
     private int jumpCount = 0;
     public int maxJumps = 1;
+    public bool canMove = true;
     bool readyToJump;
+    bool isInTrigger = false;
 
     [Header("Animator")]
     public Animator anim;
@@ -25,9 +28,15 @@ public class PlayerMovement : MonoBehaviour
     [Header("Ground Check")]
     public float playerHeight;
     public LayerMask whatIsGround;
-    bool grounded;
+    public bool grounded;
+
+    [Header("Stupid stairs")]
+    public float maxSlopAngle;
+    private RaycastHit slopeHit;
+    private bool exitingSlope;
 
     public Transform orientation;
+    public Transform backOrientation;
 
     float horizontalInput;
     float verticalInput;
@@ -36,7 +45,8 @@ public class PlayerMovement : MonoBehaviour
     float currentSpeed;
     bool isDashing = false;
 
-    Rigidbody rb;
+    [HideInInspector]
+    public Rigidbody rb;
 
     private void Start()
     {
@@ -44,13 +54,17 @@ public class PlayerMovement : MonoBehaviour
         rb.freezeRotation = true;
 
         readyToJump = true;
+        canMove = true;
         currentSpeed = walkSpeed;
     }
 
     private void Update()
     {
         bool wasGrounded = grounded;
-        grounded = Physics.Raycast(orientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+        bool groundedFromOrientation = Physics.Raycast(orientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+        bool groundedFromBackOrientation = Physics.Raycast(backOrientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+
+        grounded = groundedFromOrientation || groundedFromBackOrientation;
 
         if (!wasGrounded && grounded)
         {
@@ -59,20 +73,35 @@ public class PlayerMovement : MonoBehaviour
             readyToJump = true;
         }
 
-        MyInput();
+        if (canMove)
+        {
+            MyInput();
+            thirdPersonCam.canMove = true;
+        }
+            
+
+        if (!canMove)
+            thirdPersonCam.canMove = false;
+
         ControlSpeed();
 
         
 
         if (grounded)
+        {
             rb.drag = groundDrag;
+        }
         else
+        {
             rb.drag = 0;
+        }
+            
     }
 
     private void FixedUpdate()
     {
-        MovePlayer();
+        if (canMove)
+            MovePlayer();
     }
 
     private void MyInput()
@@ -132,7 +161,7 @@ public class PlayerMovement : MonoBehaviour
         
 
         // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) && readyToJump && jumpCount < maxJumps)
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) && readyToJump && jumpCount < maxJumps && !isInTrigger)
         {
             if (jumpBurstParticles.isPlaying)
             {
@@ -174,6 +203,14 @@ public class PlayerMovement : MonoBehaviour
     {
         moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
+        if (OnSlope() && !exitingSlope)
+        {
+            rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
+
+            if(rb.velocity.y > 0)
+                rb.AddForce(Vector3.down * 80f, ForceMode.Force);
+        }
+
         rb.AddForce(moveDirection.normalized * currentSpeed * 10f, ForceMode.Force);
 
         // Clamping the velocity to currentSpeed to prevent sliding
@@ -183,24 +220,41 @@ public class PlayerMovement : MonoBehaviour
             Vector3 limitedVel = flatVel.normalized * currentSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
+
+        if (readyToJump)
+            rb.useGravity = !OnSlope();
     }
 
     private void SpeedControl()
     {
-        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
-        // limit velocity if needed
-        if (flatVel.magnitude > currentSpeed)
+        if (OnSlope() && !exitingSlope)
         {
-            Vector3 limitedVel = flatVel.normalized * currentSpeed;
-            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+            if(rb.velocity.magnitude > currentSpeed)
+                rb.velocity = rb.velocity.normalized * currentSpeed;
         }
+
+        else
+        {
+            Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+            if (flatVel.magnitude > currentSpeed)
+            {
+                Vector3 limitedVel = flatVel.normalized * currentSpeed;
+                rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+            }
+        }
+        
     }
 
     private void Jump()
     {
+        exitingSlope = true;
+
         // reset y velocity
-        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        if (rb.velocity.y > 0)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        }
         anim.SetBool("isJumping", true);
 
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
@@ -208,6 +262,41 @@ public class PlayerMovement : MonoBehaviour
 
     private void ResetJump()
     {
+        exitingSlope = false;
         readyToJump = true;
+    }
+
+    private bool OnSlope()
+    {
+        if(Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.3f))
+        {
+            float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
+            return angle < maxSlopAngle && angle != 0;
+        }
+
+        return false;
+    }
+
+    private Vector3 GetSlopeMoveDirection()
+    {
+        return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
+    }
+
+    // DIALOGUE TRIGGERS ETC
+
+    public void OnTriggerStay(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Trigger"))
+        {
+            isInTrigger = true;
+        }
+    }
+
+    public void OnTriggerExit(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Trigger"))
+        {
+            isInTrigger = false;
+        }
     }
 }

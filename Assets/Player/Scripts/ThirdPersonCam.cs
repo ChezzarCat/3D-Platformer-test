@@ -11,12 +11,14 @@ public class ThirdPersonCam : MonoBehaviour
     public Rigidbody rb;
 
     public float rotationSpeed;
+    public bool canMove;
     public CinemachineFreeLook cinemachineFreeLook;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        canMove = true;
     }
 
     private void Update()
@@ -27,12 +29,13 @@ public class ThirdPersonCam : MonoBehaviour
 
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
+
         Vector3 inputDir = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-        if (inputDir != Vector3.zero)
+        if ((inputDir != Vector3.zero) && canMove)
             playerObj.forward = Vector3.Slerp(playerObj.forward, inputDir.normalized, Time.deltaTime * rotationSpeed);
 
-        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5))
+        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5)) && canMove)
         {
             StartCoroutine(RecenterCamera(0.5f));
         }

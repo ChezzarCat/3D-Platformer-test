@@ -47,16 +47,31 @@ Shader "Custom/VertexLightingShader"
                 // Transform the normal to world space
                 float3 worldNormal = normalize(mul(v.normal, (float3x3)unity_ObjectToWorld));
 
-                // Transform the light direction to object space
-                float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
+                // Transform the vertex position to world space
+                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
 
-                float NdotL = max(0, dot(worldNormal, lightDir));
-                float3 lightColor = _LightColor0.rgb;
+                // Spotlight properties
+                float3 lightPos = _WorldSpaceLightPos0.xyz;
+                float3 lightDir = normalize(_WorldSpaceLightPos0.xyz - worldPos); // Direction from vertex to light
+
+                // Calculate the dot product between the light direction and the normal
+                float NdotL = max(0.0, dot(worldNormal, lightDir));
+
+                // Spotlight attenuation: Calculate angle between spotlight direction and the light direction to the vertex
+                float3 spotDirection = normalize(_WorldSpaceLightPos0.xyz); // Direction of the spotlight
+                float spotlightAngle = dot(spotDirection, -lightDir); // Compare the spotlight direction to the light direction
+
+                // Attenuation based on spotlight angle falloff
+                float spotAttenuation = smoothstep(0.7, 1.0, spotlightAngle); // Adjust the range of angles where the spotlight affects
+
+                // Apply the light color with attenuation
+                float3 lightColor = _LightColor0.rgb * NdotL * spotAttenuation;
 
                 // Apply ambient light
                 float3 ambient = unity_AmbientSky.rgb * _Color.rgb;
-                float3 diffuse = lightColor * _Color.rgb * NdotL;
+                float3 diffuse = lightColor * _Color.rgb;
 
+                // Final color is a combination of ambient and diffuse
                 o.color = float4(diffuse + ambient, _Color.a);
 
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
