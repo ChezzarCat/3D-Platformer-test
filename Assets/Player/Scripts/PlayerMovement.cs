@@ -69,7 +69,7 @@ public class PlayerMovement : MonoBehaviour
         {
             anim.SetBool("isJumping", false);
             jumpCount = 0;
-            readyToJump = true;
+            ResetJump();
         }
 
         if (canMove)
@@ -195,6 +195,8 @@ public class PlayerMovement : MonoBehaviour
             && CanJumpOnSlope()
             && grounded)
         {
+            readyToJump = false;
+            
             FindFirstObjectByType<SAudioManager>().Play("jump");
 
             if (jumpBurstParticles.isPlaying)
@@ -208,14 +210,10 @@ public class PlayerMovement : MonoBehaviour
             }
 
             anim.SetBool("isDancing", false);
-
-            readyToJump = false;
             jumpCount++;
             anim.SetBool("isJumping", true);
             
             Jump();
-
-            Invoke(nameof(ResetJump), jumpCooldown);
         }
     }
 
@@ -285,6 +283,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Jump()
     {
+        rb.useGravity = true;
         exitingSlope = true;
 
         // reset y velocity
@@ -298,13 +297,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void ResetJump()
     {
-        exitingSlope = false;
         StartCoroutine(WaitJumpFrames());
     }
 
     IEnumerator WaitJumpFrames()
     {
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.05f);
+        exitingSlope = false;
         readyToJump = true;
     }
 
