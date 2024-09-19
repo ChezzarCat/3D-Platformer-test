@@ -13,6 +13,7 @@ public class ThirdPersonCam : MonoBehaviour
     public float rotationSpeed;
     public bool canMove;
     public CinemachineFreeLook cinemachineFreeLook;
+    bool isCentering;
 
     private void Start()
     {
@@ -35,7 +36,7 @@ public class ThirdPersonCam : MonoBehaviour
         if ((inputDir != Vector3.zero) && canMove)
             playerObj.forward = Vector3.Slerp(playerObj.forward, inputDir.normalized, Time.deltaTime * rotationSpeed);
 
-        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5)) && canMove)
+        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5)) && canMove && !isCentering)
         {
             StartCoroutine(RecenterCamera(0.5f));
         }
@@ -44,7 +45,9 @@ public class ThirdPersonCam : MonoBehaviour
     private IEnumerator RecenterCamera(float duration)
     {
         cinemachineFreeLook.m_RecenterToTargetHeading.m_enabled = true;
+        isCentering = true;
         yield return new WaitForSeconds(duration);
         cinemachineFreeLook.m_RecenterToTargetHeading.m_enabled = false;
+        isCentering = false;
     }
 }

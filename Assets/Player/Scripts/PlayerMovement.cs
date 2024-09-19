@@ -20,7 +20,6 @@ public class PlayerMovement : MonoBehaviour
     public int maxJumps = 1;
     public bool canMove = true;
     bool readyToJump;
-    bool isInTrigger = false;
 
     [Header("Animator")]
     public Animator anim;
@@ -81,7 +80,15 @@ public class PlayerMovement : MonoBehaviour
             
 
         if (!canMove)
+        {
+            FindFirstObjectByType<SAudioManager>().Stop("run");
+            FindFirstObjectByType<SAudioManager>().Stop("walk");
+
+            dashBurstParticles.Stop();
+            runParticles.Stop();
+
             thirdPersonCam.canMove = false;
+        }
 
         ControlSpeed();
 
@@ -113,10 +120,15 @@ public class PlayerMovement : MonoBehaviour
 
         anim.SetFloat("Speed", speed);
 
+        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.JoystickButton3)))
+            anim.SetBool("isDancing", true);
+
         
         // PARTICLES
         if (speed > 0.01f && grounded && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.JoystickButton0)))
         {
+            anim.SetBool("isDancing", false);
+
             if (dashBurstParticles.isPlaying)
             {
                 dashBurstParticles.Stop();
@@ -131,38 +143,60 @@ public class PlayerMovement : MonoBehaviour
         if (isDashing)
         {
             runParticles.Stop();
+            FindFirstObjectByType<SAudioManager>().Stop("walk");
             anim.SetBool("isDashing", true);
             if (speed > 0.01f && grounded)
             {
                 if (!dashParticles.isPlaying)
+                {
                     dashParticles.Play();
+                    FindFirstObjectByType<SAudioManager>().Play("run");
+                }
             }
             else
             {
                 if (dashParticles.isPlaying)
+                {
                     dashParticles.Stop();
+                    FindFirstObjectByType<SAudioManager>().Stop("run");
+                }
             }
         }
         else
         {
+            
             dashParticles.Stop();
-            anim.SetBool("isDashing", false);
+            FindFirstObjectByType<SAudioManager>().Stop("run");
             if (speed > 0.01f && grounded)
             {
+                anim.SetBool("isDashing", false);
+                anim.SetBool("isDancing", false);
                 if (!runParticles.isPlaying)
+                {
                     runParticles.Play();
+                    FindFirstObjectByType<SAudioManager>().Play("walk");
+                }
             }
             else
             {
                 if (runParticles.isPlaying)
+                {
                     runParticles.Stop();
+                    FindFirstObjectByType<SAudioManager>().Stop("walk");
+                }
             }
         }
         
 
         // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) && readyToJump && jumpCount < maxJumps && !isInTrigger)
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) 
+            && readyToJump 
+            && jumpCount < maxJumps 
+            && CanJumpOnSlope()
+            && grounded)
         {
+            FindFirstObjectByType<SAudioManager>().Play("jump");
+
             if (jumpBurstParticles.isPlaying)
             {
                 jumpBurstParticles.Stop();
@@ -173,9 +207,12 @@ public class PlayerMovement : MonoBehaviour
                 jumpBurstParticles.Play();
             }
 
+            anim.SetBool("isDancing", false);
 
             readyToJump = false;
             jumpCount++;
+            anim.SetBool("isJumping", true);
+            
             Jump();
 
             Invoke(nameof(ResetJump), jumpCooldown);
@@ -205,7 +242,14 @@ public class PlayerMovement : MonoBehaviour
 
         if (OnSlope() && !exitingSlope)
         {
-            rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
+            if (isDashing && !CanJumpOnSlope())
+                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 5f, ForceMode.Force);
+            else if (!isDashing && !CanJumpOnSlope())
+                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 8f, ForceMode.Force);
+            else if (isDashing && CanJumpOnSlope())
+                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
+            else if (!isDashing && CanJumpOnSlope())
+                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
 
             if(rb.velocity.y > 0)
                 rb.AddForce(Vector3.down * 80f, ForceMode.Force);
@@ -227,14 +271,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void SpeedControl()
     {
-        if (OnSlope() && !exitingSlope)
-        {
-            if(rb.velocity.magnitude > currentSpeed)
-                rb.velocity = rb.velocity.normalized * currentSpeed;
-        }
-
-        else
-        {
+        
             Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
             if (flatVel.magnitude > currentSpeed)
@@ -242,7 +279,7 @@ public class PlayerMovement : MonoBehaviour
                 Vector3 limitedVel = flatVel.normalized * currentSpeed;
                 rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
             }
-        }
+        
         
     }
 
@@ -255,14 +292,19 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         }
-        anim.SetBool("isJumping", true);
-
+        
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
 
     private void ResetJump()
     {
         exitingSlope = false;
+        StartCoroutine(WaitJumpFrames());
+    }
+
+    IEnumerator WaitJumpFrames()
+    {
+        yield return new WaitForSeconds(0.2f);
         readyToJump = true;
     }
 
@@ -282,21 +324,16 @@ public class PlayerMovement : MonoBehaviour
         return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
     }
 
-    // DIALOGUE TRIGGERS ETC
-
-    public void OnTriggerStay(Collider collision)
+    private bool CanJumpOnSlope()
     {
-        if (collision.gameObject.CompareTag("Trigger"))
+        if (OnSlope())
         {
-            isInTrigger = true;
+            if (rb.velocity.y > 0)
+            {
+                return false;
+            }
         }
-    }
 
-    public void OnTriggerExit(Collider collision)
-    {
-        if (collision.gameObject.CompareTag("Trigger"))
-        {
-            isInTrigger = false;
-        }
+        return true;
     }
 }

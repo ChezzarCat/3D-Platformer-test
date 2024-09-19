@@ -61,7 +61,7 @@ public class NormalTextTrigger : MonoBehaviour
 
     public void OnTriggerStay(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.JoystickButton1)) && mustInteract && dialogueManagerNormal.isShowing == false && player.grounded)
+        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.JoystickButton2)) && mustInteract && dialogueManagerNormal.isShowing == false && player.grounded)
         {
             if (isNPC)
             {

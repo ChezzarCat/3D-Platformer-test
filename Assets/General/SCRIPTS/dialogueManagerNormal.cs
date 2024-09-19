@@ -45,7 +45,7 @@ public class dialogueManagerNormal : MonoBehaviour
     {
 		if (dialogueTextObject.activeSelf)
 		{
-			if ((Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.JoystickButton1)) && !isWritting)
+			if ((Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.JoystickButton1)) && !isWritting)
 			{
 				DisplayNextSentence();
 			}
@@ -237,9 +237,9 @@ public class dialogueManagerNormal : MonoBehaviour
 		skipwritting = false;
 		box.SetTrigger("dialogueOut");
 		sentences.Clear();
-		player.canMove = true;
 		yield return new WaitForSeconds(0.5f);
     	dialogueTextObject.SetActive(false);
+		player.canMove = true;
 		StopAllCoroutines();
 		StartCoroutine(FrameWait());
     }
