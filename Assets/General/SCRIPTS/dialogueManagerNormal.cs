@@ -80,6 +80,8 @@ public class dialogueManagerNormal : MonoBehaviour
 
     public void StartDialogue (dialogue dialogue)
     {
+		player.isTalking = true;
+
 		if (isNpc)
 			anim.SetBool("isTalking", true);
 
@@ -238,6 +240,7 @@ public class dialogueManagerNormal : MonoBehaviour
 		box.SetTrigger("dialogueOut");
 		sentences.Clear();
 		yield return new WaitForSeconds(0.5f);
+		player.isTalking = false;
     	dialogueTextObject.SetActive(false);
 		player.canMove = true;
 		StopAllCoroutines();

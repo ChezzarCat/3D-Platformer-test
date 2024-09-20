@@ -23,6 +23,7 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Animator")]
     public Animator anim;
+    public Animator buttonPressAction;
 
     [Header("Ground Check")]
     public float playerHeight;
@@ -33,9 +34,11 @@ public class PlayerMovement : MonoBehaviour
     public float maxSlopAngle;
     private RaycastHit slopeHit;
     private bool exitingSlope;
-
     public Transform orientation;
     public Transform backOrientation;
+
+    [Header("Others")]
+    public bool isTalking = false;
 
     float horizontalInput;
     float verticalInput;
@@ -71,6 +74,9 @@ public class PlayerMovement : MonoBehaviour
             jumpCount = 0;
             ResetJump();
         }
+
+        if (isTalking)
+            buttonPressAction.SetBool("isInTrigger", false);
 
         if (canMove)
         {
@@ -334,5 +340,25 @@ public class PlayerMovement : MonoBehaviour
         }
 
         return true;
+    }
+
+    public void OnTriggerStay(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Trigger") && !grounded)
+        {
+            buttonPressAction.SetBool("isInTrigger", false);
+        }
+        else if (collision.gameObject.CompareTag("Trigger") && grounded && !isTalking)
+        {
+            buttonPressAction.SetBool("isInTrigger", true);
+        }
+    }
+
+    public void OnTriggerExit(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Trigger"))
+        {
+            buttonPressAction.SetBool("isInTrigger", false);
+        }
     }
 }
