@@ -5,21 +5,14 @@ using UnityEngine;
 public class DoorOpen : MonoBehaviour
 {
     public Animator dooranim;
+    public DoorOpen2 dooropen;
 
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Player") && dooranim.GetBool("Open2") == false)
         {
             dooranim.SetBool("Open", true);
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            dooranim.SetBool("Open", false);
         }
     }
     

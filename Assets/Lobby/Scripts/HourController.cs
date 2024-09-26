@@ -2,31 +2,25 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using System;
 
 public class HourController : MonoBehaviour
 {
     public TextMeshProUGUI timeText;
-    public TextMeshProUGUI timeTextShadow;
 
     void Start()
     {
-        UpdateTime();
-    }
-
-    void Update()
-    {
-        if (Time.frameCount % 60 == 0)
-        {
-            UpdateTime();
-        }
+        InvokeRepeating("UpdateTime", 0f, 0.15f);
     }
 
     void UpdateTime()
     {
-        DateTime now = DateTime.Now;
-        string formattedTime = now.ToString("HH:mm");
+        // Generate random hours and minutes
+        int randomHour = Random.Range(0, 24);
+        int randomMinute = Random.Range(0, 60);
+
+        // Format the time in HH:mm
+        string formattedTime = randomHour.ToString("00") + ":" + randomMinute.ToString("00");
+
         timeText.text = formattedTime;
-        timeTextShadow.text = formattedTime;
     }
 }
