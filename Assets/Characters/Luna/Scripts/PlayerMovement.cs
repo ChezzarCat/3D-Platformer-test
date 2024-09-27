@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using Cinemachine;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -40,6 +41,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Others")]
     public bool isTalking = false;
     public AudioSource audioSource;
+    public ControllerDetection controllerDetection;
 
     float horizontalInput;
     float verticalInput;
@@ -59,6 +61,9 @@ public class PlayerMovement : MonoBehaviour
         readyToJump = true;
         canMove = true;
         currentSpeed = walkSpeed;
+
+        if (controllerDetection == null)
+            Debug.LogError("ControllerDetection is not assigned to player movement.");
     }
 
     private void Update()
@@ -149,7 +154,7 @@ public class PlayerMovement : MonoBehaviour
 
         anim.SetFloat("Speed", speed);
 
-        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.JoystickButton3)))
+        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(controllerDetection.dance)))
         {
             FindFirstObjectByType<SAudioManager>().Play("luna_dance");
             anim.SetBool("isDancing", true); 
@@ -157,7 +162,7 @@ public class PlayerMovement : MonoBehaviour
         }
         
         // PARTICLES
-        if (speed > 0.01f && grounded && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.JoystickButton0)))
+        if (speed > 0.01f && grounded && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run)))
         {
             anim.SetBool("isDancing", false);
             FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
@@ -225,7 +230,7 @@ public class PlayerMovement : MonoBehaviour
         
 
         // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1)) 
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) 
             && readyToJump 
             && jumpCount < maxJumps 
             && CanJumpOnSlope()
@@ -258,7 +263,7 @@ public class PlayerMovement : MonoBehaviour
     private void ControlSpeed()
     {
         // RUN / DASH
-        if (grounded && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.JoystickButton0)))
+        if (grounded && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(controllerDetection.run)))
         {
             currentSpeed = runSpeed;
             isDashing = true;

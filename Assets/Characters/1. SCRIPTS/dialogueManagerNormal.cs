@@ -7,6 +7,7 @@ using TMPro;
 public class dialogueManagerNormal : MonoBehaviour
 {
 	[Header("GENERAL REFERENCES")]
+	public ControllerDetection controllerDetection;
 	public TMP_Text dialogueTextNORMAL;
 	public GameObject dialogueTextObject;
 	public PlayerMovement player;
@@ -47,12 +48,12 @@ public class dialogueManagerNormal : MonoBehaviour
     {
 		if (dialogueTextObject.activeSelf)
 		{
-			if ((Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.JoystickButton1)) && !isWritting)
+			if ((Input.GetKey(KeyCode.Z) || Input.GetKey(controllerDetection.jump)) && !isWritting)
 			{
 				DisplayNextSentence();
 			}
 
-			if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.JoystickButton0))
+			if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run))
 			{
 				skipwritting = true;
 			}

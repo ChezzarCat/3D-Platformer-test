@@ -517,6 +517,7 @@ MonoBehaviour:
   backOrientation: {fileID: 1902553243}
   isTalking: 0
   audioSource: {fileID: 1168893681}
+  controllerDetection: {fileID: 2042134199}
   rb: {fileID: 0}
 --- !u!54 &100620256
 Rigidbody:
@@ -7063,7 +7064,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 835856744}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.23782913, y: -0.0008601612, z: 0.00021061464, w: 0.9713066}
+  m_LocalRotation: {x: 0.23782909, y: -0.0008601613, z: 0.00021061463, w: 0.9713066}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -7380,7 +7381,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 888378599}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.26039255, y: -0.00085502124, z: 0.00023059614, w: 0.96550244}
+  m_LocalRotation: {x: 0.26039252, y: -0.0008550212, z: 0.00023059614, w: 0.96550244}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -8082,7 +8083,7 @@ MonoBehaviour:
     m_MaxSpeed: 1
     m_AccelTime: 0.2
     m_DecelTime: 0.1
-    m_InputAxisName: Mouse Y
+    m_InputAxisName: Mouse Y PC
     m_InputAxisValue: 0
     m_InvertInput: 1
     m_MinValue: 0
@@ -8106,7 +8107,7 @@ MonoBehaviour:
     m_MaxSpeed: 300
     m_AccelTime: 0.1
     m_DecelTime: 0.1
-    m_InputAxisName: Mouse X
+    m_InputAxisName: Mouse X PC
     m_InputAxisValue: 0
     m_InvertInput: 0
     m_MinValue: -180
@@ -17879,6 +17880,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a83dd6efac0fad24483a81b0ef73934e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controllerDetection: {fileID: 2042134199}
   dialogueTextNORMAL: {fileID: 446464082}
   dialogueTextObject: {fileID: 24918624}
   player: {fileID: 100620255}
@@ -25648,7 +25650,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1788871626}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.26466173, y: -0.00085362175, z: 0.00023427502, w: 0.9643409}
+  m_LocalRotation: {x: 0.26466167, y: -0.0008536218, z: 0.000234275, w: 0.964341}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -26032,6 +26034,68 @@ MonoBehaviour:
   mustInteract: 1
   changesAfterTalking: 1
   isNPC: 0
+--- !u!1 &2042134197
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2042134198}
+  - component: {fileID: 2042134199}
+  m_Layer: 0
+  m_Name: -- INPUT SYSTEM
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2042134198
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2042134197}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2042134199
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2042134197}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3bfe8d1608ad974b8c8228e4c9c5218, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  activeController: Keyboard
+  KeyboardSpritesUI:
+  - {fileID: 719422922}
+  - {fileID: 1777125838}
+  - {fileID: 1313888059}
+  PSXSpritesUI:
+  - {fileID: 1693843085}
+  - {fileID: 1297127628}
+  - {fileID: 108455840}
+  XBOXSpritesUI:
+  - {fileID: 1402407862}
+  - {fileID: 105263715}
+  - {fileID: 31948914}
+  freeLookCamera: {fileID: 1037655123}
+  jump: 0
+  interact: 0
+  run: 0
+  dance: 0
 --- !u!1001 &2103453888
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28706,6 +28770,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 963194228}
+  - {fileID: 2042134198}
   - {fileID: 1103007123}
   - {fileID: 439390868}
   - {fileID: 1664266434}
