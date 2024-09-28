@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using Cinemachine;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -128,19 +127,13 @@ public class PlayerMovement : MonoBehaviour
             MovePlayer();
     }
 
+    public void CanMove(bool canIt)
+    {
+        canMove = canIt;
+    }
+
     public void LowerRiseVolume(float targetVolume)
     {
-        //float startVolume = audioSource.volume;
-        //float timeElapsed = 0f;
-
-        /*while (timeElapsed < transitionDuration)
-        {
-            audioSource.volume = Mathf.Lerp(startVolume, targetVolume, timeElapsed / transitionDuration);
-            timeElapsed += Time.deltaTime;
-
-            yield return null;  // Wait for the next frame
-        }*/
-
         audioSource.volume = targetVolume;
     }
 

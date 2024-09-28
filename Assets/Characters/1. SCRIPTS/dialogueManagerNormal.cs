@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Cinemachine;
 
 public class dialogueManagerNormal : MonoBehaviour
 {
@@ -14,6 +15,8 @@ public class dialogueManagerNormal : MonoBehaviour
 	public Transform playerTransf;
 	public Animator box;
 	public GameObject nextSentenceButton;
+	public CinemachineFreeLook dialogueCam;
+	public TMP_Text skipButton;
 
 	[Header("TEXTBOX PORTRAITS")]
 	public GameObject[] allFaces;
@@ -22,7 +25,6 @@ public class dialogueManagerNormal : MonoBehaviour
 	public Queue<string> sentences;
 	public Queue<string> faces;
 	public Queue<string> textsounds;
-	public Queue<dialogueEntry.textSpeedEnum> textSpeeds;
 
 	[Header("OTHERS")]
 	private bool isWritting = false;
@@ -34,14 +36,22 @@ public class dialogueManagerNormal : MonoBehaviour
 	public bool isNpc = false;
 	private Quaternion originalNPCRotation;
 	private Transform npcTransform;
+	private string currentLanguage;
 
     void Start()
     {
         sentences = new Queue<string>(); 
 		faces = new Queue<string>();
 		textsounds = new Queue<string>();
-		textSpeeds = new Queue<dialogueEntry.textSpeedEnum>();
 		nextSentenceButton.SetActive(false);
+		dialogueCam.Priority = 1;
+		currentLanguage = PlayerPrefs.GetString("GameLanguage", "ENG");
+
+		switch (currentLanguage)
+		{
+			case "ENG": skipButton.text = " SKIP:"; break;
+			case "ESP": skipButton.text = "SALTA:"; break;
+		}
     }
 
     void Update()
@@ -59,6 +69,11 @@ public class dialogueManagerNormal : MonoBehaviour
 			}
 		}
     }
+
+	/*public void ActivateRig(int rigIndex)
+    {
+        //
+    }*/
 
 	public void lookAtNPC(Transform npc)
 	{
@@ -86,8 +101,11 @@ public class dialogueManagerNormal : MonoBehaviour
 		player.isTalking = true;
 
 		if (isNpc)
+		{
+			dialogueCam.Priority = 20;
 			anim.SetBool("isTalking", true);
-
+		}
+			
 		isShowing = true;
 		player.canMove = false;
 		player.anim.SetFloat("Speed", 0f);
@@ -98,14 +116,12 @@ public class dialogueManagerNormal : MonoBehaviour
     	sentences.Clear();
 		faces.Clear();
 		textsounds.Clear();
-		textSpeeds.Clear();
 
     	foreach (dialogueEntry entry in dialogue.entries)
 		{
 			sentences.Enqueue(entry.sentence);
         	faces.Enqueue(entry.face);
 			textsounds.Enqueue(entry.textsound);
-			textSpeeds.Enqueue(entry.textSpeed);
 		}
 
     	DisplayNextSentence();
@@ -126,7 +142,6 @@ public class dialogueManagerNormal : MonoBehaviour
     	string sentence = sentences.Dequeue();
 		string face = faces.Dequeue();
 		string textsound = textsounds.Dequeue();
-		dialogueEntry.textSpeedEnum textSpeed = textSpeeds.Dequeue();
   
     	foreach (GameObject hideAllFaces in allFaces)
     	{
@@ -143,10 +158,10 @@ public class dialogueManagerNormal : MonoBehaviour
 		}
 
     	StopAllCoroutines();
-    	StartCoroutine(Typesentence(sentence, face, textsound, textSpeed));
+    	StartCoroutine(Typesentence(sentence, face, textsound));
     }
 
-    IEnumerator Typesentence(string sentence, string face, string textsound, dialogueEntry.textSpeedEnum textSpeed)
+    IEnumerator Typesentence(string sentence, string face, string textsound)
     {
 		nextSentenceButton.SetActive(false);
 
@@ -183,16 +198,7 @@ public class dialogueManagerNormal : MonoBehaviour
 									FindFirstObjectByType<SAudioManager>().Play(textsound);
 							}
 
-							// TEXTSPEED
-
-							if (textSpeed == dialogueEntry.textSpeedEnum.Normal)
-								yield return new WaitForSeconds(0.035f);
-							else if (textSpeed == dialogueEntry.textSpeedEnum.Slow)
-								yield return new WaitForSeconds(0.1f);
-							else if (textSpeed == dialogueEntry.textSpeedEnum.Fast)
-								yield return new WaitForSeconds(0.025f);
-							else
-								yield return new WaitForSeconds(0.035f);
+							yield return new WaitForSeconds(0.035f);
 
 							// MORE WAIT FOR COMMAS AND FULL STOPS
 
@@ -236,13 +242,17 @@ public class dialogueManagerNormal : MonoBehaviour
     
 
     IEnumerator EndDialogue()
-    {		
+    {	
 		skipwritting = false;
 		box.SetTrigger("dialogueOut");
 		sentences.Clear();
 
 		if (isNpc)
+		{
+			dialogueCam.Priority = 1;
 			anim.SetBool("isTalking", false);
+		}
+			
 
 		yield return new WaitForSeconds(0.5f);
 

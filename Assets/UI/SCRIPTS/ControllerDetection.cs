@@ -9,6 +9,7 @@ public class ControllerDetection : MonoBehaviour
     public GameObject[] PSXSpritesUI;
     public GameObject[] XBOXSpritesUI;
     public CinemachineFreeLook freeLookCamera;
+    public PlayerMovement pm;
 
     [Header("Input")]
     public KeyCode jump;
@@ -26,11 +27,18 @@ public class ControllerDetection : MonoBehaviour
     // Store the name of the currently connected controller
     private string currentControllerName = "";
     
+    void Start()
+    {
+        if (freeLookCamera == null || pm == null)
+        {
+            Debug.Log("Missing controller freelookcam and player movement, do not worry if this is a scene without player movement");
+        }
+    }
 
     void Update()
     {
         DetectActiveController();
-        Debug.Log($"Detected Active Controller: {activeController}");
+        //Debug.Log($"Detected Active Controller: {activeController}");
 
         switch (activeController)
         {
@@ -39,8 +47,11 @@ public class ControllerDetection : MonoBehaviour
                 ActivateDeactivatePSX(false);
                 ActivateDeactivateXBOX(false);
 
-                freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y PC";
-                freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X PC";
+                if (freeLookCamera != null)
+                {
+                    freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y PC";
+                    freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X PC";
+                }
 
                 DefaultInput();
                 break;
@@ -55,8 +66,11 @@ public class ControllerDetection : MonoBehaviour
                 run = KeyCode.JoystickButton0;
                 dance = KeyCode.JoystickButton3;
 
-                freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y PSX";
-                freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X PSX";
+                if (freeLookCamera != null)
+                {
+                    freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y PSX";
+                    freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X PSX";
+                }
 
                 break;
 
@@ -64,23 +78,24 @@ public class ControllerDetection : MonoBehaviour
                 ActivateDeactivateKeyboard(false);
                 ActivateDeactivatePSX(false);
                 ActivateDeactivateXBOX(true);
-
-                freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y";
-                freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X";
-
-                DefaultInput();
-                break;
-
-            case "Other":
-                ActivateDeactivateKeyboard(false);
-                ActivateDeactivatePSX(false);
-                ActivateDeactivateXBOX(true);
-
-                freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y";
-                freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X";
+                
+                if (freeLookCamera != null)
+                {
+                    freeLookCamera.m_YAxis.m_InputAxisName = "Mouse Y";
+                    freeLookCamera.m_XAxis.m_InputAxisName = "Mouse X";
+                }
 
                 DefaultInput();
                 break;
+        }
+
+        if (freeLookCamera != null || pm != null)
+        {
+            if (!pm.canMove)
+            {
+                freeLookCamera.m_YAxis.m_InputAxisName = "";
+                freeLookCamera.m_XAxis.m_InputAxisName = "";
+            }
         }
     }
 

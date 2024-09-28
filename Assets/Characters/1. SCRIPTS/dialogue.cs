@@ -6,13 +6,6 @@ using UnityEngine;
 public class dialogueEntry
 {
 	public string textsound;
-	public textSpeedEnum textSpeed;
-	public enum textSpeedEnum
-    {
-        Normal,
-        Slow,
-        Fast
-    }
     public string face;
     
     [TextArea(3, 10)]
