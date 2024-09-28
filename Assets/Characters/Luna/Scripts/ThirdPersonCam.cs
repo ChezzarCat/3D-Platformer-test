@@ -24,23 +24,35 @@ public class ThirdPersonCam : MonoBehaviour
 
     private void Update()
     {
-        // Rotate orientation
-        Vector3 viewDir = player.position - new Vector3(transform.position.x, player.position.y, transform.position.z);
-        orientation.forward = viewDir.normalized;
-
+        // Handle input in Update for consistent frame timing
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
 
+        // Calculate input direction based on camera orientation
         Vector3 inputDir = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-        if ((inputDir != Vector3.zero) && canMove)
-            playerObj.forward = Vector3.Slerp(playerObj.forward, inputDir.normalized, Time.deltaTime * rotationSpeed);
+        // If there's input and player can move, rotate player towards input direction
+        if (inputDir != Vector3.zero && canMove)
+        {
+            // Smoothly rotate playerObj towards input direction
+            Quaternion targetRotation = Quaternion.LookRotation(inputDir.normalized);
+            playerObj.rotation = Quaternion.Slerp(playerObj.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        }
 
+        // Recenter camera when specific keys are pressed
         if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5)) && canMove && !isCentering)
         {
             StartCoroutine(RecenterCamera(0.5f));
         }
     }
+
+    private void LateUpdate()
+    {
+        // Handle camera orientation in LateUpdate for consistent tracking after movement
+        Vector3 viewDir = player.position - new Vector3(transform.position.x, player.position.y, transform.position.z);
+        orientation.forward = viewDir.normalized;
+    }
+
 
     private IEnumerator RecenterCamera(float duration)
     {

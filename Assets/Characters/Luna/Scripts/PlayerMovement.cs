@@ -19,7 +19,7 @@ public class PlayerMovement : MonoBehaviour
     private int jumpCount = 0;
     public int maxJumps = 1;
     public bool canMove = true;
-    bool readyToJump;
+    bool readyToJump = false;
 
     [Header("Animator")]
     public Animator anim;
@@ -56,14 +56,10 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-
-        readyToJump = true;
-        canMove = true;
         currentSpeed = walkSpeed;
-
-        if (controllerDetection == null)
-            Debug.LogError("ControllerDetection is not assigned to player movement.");
     }
+
+    // GROUND AND GENERAL FLAGS ---------------------------------------------------------
 
     private void Update()
     {
@@ -93,9 +89,7 @@ public class PlayerMovement : MonoBehaviour
             MyInput();
             thirdPersonCam.canMove = true;
         }
-            
-
-        if (!canMove)
+        else
         {
             FindFirstObjectByType<SAudioManager>().Stop("run");
             FindFirstObjectByType<SAudioManager>().Stop("walk");
@@ -106,19 +100,12 @@ public class PlayerMovement : MonoBehaviour
             thirdPersonCam.canMove = false;
         }
 
-        ControlSpeed();
-
-        
-
         if (grounded)
-        {
             rb.drag = groundDrag;
-        }
         else
-        {
             rb.drag = 0;
-        }
-            
+
+        ControlSpeed();    
     }
 
     private void FixedUpdate()
@@ -127,16 +114,7 @@ public class PlayerMovement : MonoBehaviour
             MovePlayer();
     }
 
-    public void CanMove(bool canIt)
-    {
-        canMove = canIt;
-    }
-
-    public void LowerRiseVolume(float targetVolume)
-    {
-        audioSource.volume = targetVolume;
-    }
-
+    // INPUT ---------------------------------------------------------
 
     private void MyInput()
     {
@@ -148,18 +126,12 @@ public class PlayerMovement : MonoBehaviour
         anim.SetFloat("Speed", speed);
 
         if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(controllerDetection.dance)))
-        {
-            FindFirstObjectByType<SAudioManager>().Play("luna_dance");
-            anim.SetBool("isDancing", true); 
-            LowerRiseVolume(0.2f);
-        }
+            DanceAction(true);
         
         // PARTICLES
         if (speed > 0.01f && grounded && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run)))
         {
-            anim.SetBool("isDancing", false);
-            FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
-            LowerRiseVolume(0.4f);
+            DanceAction(false);
 
             if (dashBurstParticles.isPlaying)
             {
@@ -202,9 +174,7 @@ public class PlayerMovement : MonoBehaviour
             if (speed > 0.01f && grounded)
             {
                 anim.SetBool("isDashing", false);
-                anim.SetBool("isDancing", false);
-                FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
-                LowerRiseVolume(0.4f);
+                DanceAction(false);
                 if (!runParticles.isPlaying)
                 {
                     runParticles.Play();
@@ -228,30 +198,12 @@ public class PlayerMovement : MonoBehaviour
             && jumpCount < maxJumps 
             && CanJumpOnSlope()
             && grounded)
-        {
-            readyToJump = false;
-            
-            FindFirstObjectByType<SAudioManager>().Play("jump");
-
-            if (jumpBurstParticles.isPlaying)
-            {
-                jumpBurstParticles.Stop();
-                jumpBurstParticles.Play();
-            }
-            else
-            {
-                jumpBurstParticles.Play();
-            }
-
-            anim.SetBool("isDancing", false);
-            FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
-            LowerRiseVolume(0.4f);
-            jumpCount++;
-            anim.SetBool("isJumping", true);
-            
+        {   
             Jump();
         }
     }
+
+    // MOVEMENT ------------------------------------------------------------------
 
     private void ControlSpeed()
     {
@@ -266,8 +218,6 @@ public class PlayerMovement : MonoBehaviour
             currentSpeed = walkSpeed;
             isDashing = false;
         }
-
-        
     }
 
     private void MovePlayer()
@@ -305,20 +255,42 @@ public class PlayerMovement : MonoBehaviour
 
     private void SpeedControl()
     {
-        
             Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
             if (flatVel.magnitude > currentSpeed)
             {
                 Vector3 limitedVel = flatVel.normalized * currentSpeed;
                 rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
-            }
-        
-        
+            }   
     }
+
+    public void CanMove(bool canIt)
+    {
+        canMove = canIt;
+    }
+
+    // JUMP ------------------------------------------------------------
 
     private void Jump()
     {
+        readyToJump = false;
+            
+        FindFirstObjectByType<SAudioManager>().Play("jump");
+
+        if (jumpBurstParticles.isPlaying)
+        {
+            jumpBurstParticles.Stop();
+            jumpBurstParticles.Play();
+        }
+        else
+        {
+            jumpBurstParticles.Play();
+        }
+
+        DanceAction(false);
+        jumpCount++;
+        anim.SetBool("isJumping", true);
+
         rb.useGravity = true;
         exitingSlope = true;
 
@@ -342,6 +314,26 @@ public class PlayerMovement : MonoBehaviour
         exitingSlope = false;
         readyToJump = true;
     }
+
+    // DANCE ------------------------------------------------------------
+
+    public void DanceAction(bool isDance)
+    {
+        if (isDance)
+        {
+            audioSource.volume = 0.2f;
+            FindFirstObjectByType<SAudioManager>().Play("luna_dance");
+            anim.SetBool("isDancing", true); 
+        }
+        else
+        {
+            audioSource.volume = 0.4f;
+            FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
+            anim.SetBool("isDancing", false); 
+        }
+    }
+
+    // SLOPE ------------------------------------------------------------
 
     private bool OnSlope()
     {
@@ -371,6 +363,8 @@ public class PlayerMovement : MonoBehaviour
 
         return true;
     }
+
+    // TRIGGERS ------------------------------------------------------------
 
     public void OnTriggerStay(Collider collision)
     {
