@@ -20,11 +20,12 @@ public class ThirdPersonCam : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         canMove = true;
+
+        changeSensibility();
     }
 
     private void Update()
     {
-        // Handle input in Update for consistent frame timing
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
 
@@ -39,10 +40,44 @@ public class ThirdPersonCam : MonoBehaviour
             playerObj.rotation = Quaternion.Slerp(playerObj.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // Recenter camera when specific keys are pressed
-        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.Joystick1Button5)) && canMove && !isCentering)
+        // RECENTER CAM
+        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.JoystickButton5)) && canMove && !isCentering)
         {
-            StartCoroutine(RecenterCamera(0.5f));
+            StartCoroutine(RecenterCamera(0.3f));
+        }
+    }
+
+    public void changeSensibility()
+    {
+        int senX = PlayerPrefs.GetInt("camX", 5);
+        int senY = PlayerPrefs.GetInt("camY", 5);
+
+        switch (senX)
+        {
+            case 1: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 50; break;
+            case 2: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 100; break;
+            case 3: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 200; break;
+            case 4: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 250; break;
+            case 5: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 300; break;    //DEFAULT
+            case 6: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 350; break;
+            case 7: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 400; break;
+            case 8: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 450; break;
+            case 9: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 500; break;
+            case 10: cinemachineFreeLook.m_XAxis.m_MaxSpeed = 550; break;
+        }
+
+        switch (senY)
+        {
+            case 1: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 0.2f; break;
+            case 2: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 0.4f; break;
+            case 3: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 0.6f; break;
+            case 4: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 0.8f; break;
+            case 5: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 1f; break;    //DEFAULT
+            case 6: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 1.25f; break;
+            case 7: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 1.5f; break;
+            case 8: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 1.75f; break;
+            case 9: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 2f; break;
+            case 10: cinemachineFreeLook.m_YAxis.m_MaxSpeed = 2.5f; break;
         }
     }
 

@@ -16,6 +16,9 @@ public class ControllerDetection : MonoBehaviour
     public KeyCode interact;
     public KeyCode run;
     public KeyCode dance;
+    public KeyCode pause;
+    public string axix1;
+    public string axix2;
 
     // Cooldown to prevent flickering
     private float inputSwitchCooldown = 0.5f;
@@ -38,7 +41,7 @@ public class ControllerDetection : MonoBehaviour
     void Update()
     {
         DetectActiveController();
-        //Debug.Log($"Detected Active Controller: {activeController}");
+        //Debug.Log(activeController);
 
         switch (activeController)
         {
@@ -65,6 +68,9 @@ public class ControllerDetection : MonoBehaviour
                 interact = KeyCode.JoystickButton2;
                 run = KeyCode.JoystickButton0;
                 dance = KeyCode.JoystickButton3;
+                pause = KeyCode.JoystickButton9;
+                axix1 = "Axis 7";
+                axix2 = "Axis 8";
 
                 if (freeLookCamera != null)
                 {
@@ -97,6 +103,23 @@ public class ControllerDetection : MonoBehaviour
                 freeLookCamera.m_XAxis.m_InputAxisName = "";
             }
         }
+
+
+        if (Input.GetKeyDown(KeyCode.F11) || Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.F4))
+        {
+            ToggleFullscreen();
+        }
+    }
+
+    public void ToggleFullscreen()
+    {
+        // Get the current screen resolution
+        int currentWidth = Screen.width;
+        int currentHeight = Screen.height;
+        bool isFullScreen = Screen.fullScreen;
+
+        // Toggle fullscreen mode
+        Screen.SetResolution(currentWidth, currentHeight, !isFullScreen);
     }
 
     void DefaultInput()
@@ -105,6 +128,9 @@ public class ControllerDetection : MonoBehaviour
         interact = KeyCode.JoystickButton1;
         run = KeyCode.JoystickButton2;
         dance = KeyCode.JoystickButton3;
+        pause = KeyCode.JoystickButton7;
+        axix1 = "Axis 6";
+        axix2 = "Axis 7";
     }
 
     void ActivateDeactivateKeyboard(bool activate)
@@ -134,7 +160,8 @@ public class ControllerDetection : MonoBehaviour
     void DetectActiveController()
     {
         // Only allow input switch if cooldown has passed
-        if (Time.time - lastInputTime < inputSwitchCooldown)
+        // Use unscaled time to prevent issues with Time.timeScale being set to 0
+        if (Time.unscaledTime - lastInputTime < inputSwitchCooldown)
         {
             return;
         }
@@ -165,10 +192,10 @@ public class ControllerDetection : MonoBehaviour
                     }
                     else
                     {
-                        activeController = "Other";
+                        activeController = "XBOX";
                     }
                     
-                    lastInputTime = Time.time; // Reset cooldown timer
+                    lastInputTime = Time.unscaledTime; // Reset cooldown timer
                 }
 
                 // Break out of the loop once the connected controller is identified
@@ -186,7 +213,7 @@ public class ControllerDetection : MonoBehaviour
             if (Input.anyKeyDown)
             {
                 activeController = "Keyboard";
-                lastInputTime = Time.time; // Reset cooldown timer
+                lastInputTime = Time.unscaledTime; // Reset cooldown timer
             }
         }
     }

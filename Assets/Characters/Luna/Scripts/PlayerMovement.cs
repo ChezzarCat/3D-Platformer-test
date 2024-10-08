@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -19,11 +20,21 @@ public class PlayerMovement : MonoBehaviour
     private int jumpCount = 0;
     public int maxJumps = 1;
     public bool canMove = true;
+    public bool canOnlyMoveCam = true;
     bool readyToJump = false;
+    bool pauseJumpFrames = true;
+    
+    [Header("Stamina")]
+    public Slider staminaSlider;
+    public Animator sliderAnim;
+    public float staminaDecreaseRate = 10f;  // How fast stamina drains when running
+    public float staminaRecoveryRate = 5f;   // How fast stamina recovers when not running
+    private float stamina = 100f;
 
     [Header("Animator")]
     public Animator anim;
     public Animator buttonPressAction;
+    public Animator soundAnim;
 
     [Header("Ground Check")]
     public float playerHeight;
@@ -38,8 +49,8 @@ public class PlayerMovement : MonoBehaviour
     public Transform backOrientation;
 
     [Header("Others")]
+    public MoodManager moodManager;
     public bool isTalking = false;
-    public AudioSource audioSource;
     public ControllerDetection controllerDetection;
 
     float horizontalInput;
@@ -47,16 +58,25 @@ public class PlayerMovement : MonoBehaviour
 
     Vector3 moveDirection;
     float currentSpeed;
+    float speed;
     bool isDashing = false;
+    bool reachedZeroStamina = false;
+    private DeathManager gameOver;
+    bool isScaredToDance;
 
     [HideInInspector]
     public Rigidbody rb;
 
     private void Start()
     {
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         currentSpeed = walkSpeed;
+
+        gameOver = FindObjectOfType<DeathManager>();
     }
 
     // GROUND AND GENERAL FLAGS ---------------------------------------------------------
@@ -84,7 +104,7 @@ public class PlayerMovement : MonoBehaviour
         }
             
 
-        if (canMove)
+        if (canMove && canOnlyMoveCam)
         {
             MyInput();
             thirdPersonCam.canMove = true;
@@ -105,12 +125,21 @@ public class PlayerMovement : MonoBehaviour
         else
             rb.drag = 0;
 
-        ControlSpeed();    
+
+        if (gameObject.transform.position.y < -30f)
+        {
+            canMove = false;
+            gameOver.StartCoroutine("Dies");
+        }
+
+
+        ControlSpeed();
+        UpdateStamina();
     }
 
     private void FixedUpdate()
     {
-        if (canMove)
+        if (canMove && canOnlyMoveCam)
             MovePlayer();
     }
 
@@ -121,15 +150,15 @@ public class PlayerMovement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
 
-        float speed = new Vector2(horizontalInput, verticalInput).magnitude;
+        speed = new Vector2(horizontalInput, verticalInput).magnitude;
 
         anim.SetFloat("Speed", speed);
 
-        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(controllerDetection.dance)))
+        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(controllerDetection.dance)))
             DanceAction(true);
         
-        // PARTICLES
-        if (speed > 0.01f && grounded && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run)))
+        // PARTICLES (PARTICLES CODE IS SUCH A MESS BUT IT WORKS, DO NOT TOUCH CUZ I TRIED TO MAKE IT MODULAR BUT I KEEP BREAKING IT SO I'LL JUST LEAVE IT LIKE THIS LOL)
+        if (speed > 0.01f && grounded && stamina > 0 && !reachedZeroStamina && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run)))
         {
             DanceAction(false);
 
@@ -193,14 +222,8 @@ public class PlayerMovement : MonoBehaviour
         
 
         // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) 
-            && readyToJump 
-            && jumpCount < maxJumps 
-            && CanJumpOnSlope()
-            && grounded)
-        {   
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && readyToJump && jumpCount < maxJumps && CanJumpOnSlope() && grounded && pauseJumpFrames)
             Jump();
-        }
     }
 
     // MOVEMENT ------------------------------------------------------------------
@@ -208,15 +231,45 @@ public class PlayerMovement : MonoBehaviour
     private void ControlSpeed()
     {
         // RUN / DASH
-        if (grounded && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(controllerDetection.run)))
+        if (grounded && canMove && stamina > 0 && !reachedZeroStamina && speed > 0.01f && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(controllerDetection.run)))
         {
             currentSpeed = runSpeed;
             isDashing = true;
+
+            stamina -= staminaDecreaseRate * Time.deltaTime;
+            stamina = Mathf.Clamp(stamina, 0f, 100f);
         }
         else
         {
             currentSpeed = walkSpeed;
             isDashing = false;
+        }
+
+        if (stamina == 0)
+        {
+            reachedZeroStamina = true;
+            sliderAnim.SetBool("isZero", true);
+        }
+        else if (stamina == 100)
+        {
+            reachedZeroStamina = false;
+            sliderAnim.SetBool("isZero", false);
+        }
+    }
+
+    private void UpdateStamina()
+    {
+        // Replenish stamina when not dashing and clamp it to max 100
+        if (!isDashing)
+        {
+            stamina += staminaRecoveryRate * Time.deltaTime;
+            stamina = Mathf.Clamp(stamina, 0f, 100f);
+        }
+
+        // Update the stamina slider
+        if (staminaSlider != null)
+        {
+            staminaSlider.value = stamina;
         }
     }
 
@@ -315,21 +368,43 @@ public class PlayerMovement : MonoBehaviour
         readyToJump = true;
     }
 
+    public IEnumerator WaitJumpFrames2()
+    {
+        pauseJumpFrames = false;
+        yield return new WaitForSeconds(0.2f);
+        pauseJumpFrames = true;
+    }
+
     // DANCE ------------------------------------------------------------
 
     public void DanceAction(bool isDance)
     {
-        if (isDance)
+        if (moodManager != null)
         {
-            audioSource.volume = 0.2f;
-            FindFirstObjectByType<SAudioManager>().Play("luna_dance");
-            anim.SetBool("isDancing", true); 
+            if (moodManager.moodLevel == 0)
+                isScaredToDance = false;
+            else
+                isScaredToDance = true;
         }
         else
         {
-            audioSource.volume = 0.4f;
-            FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
-            anim.SetBool("isDancing", false); 
+            isScaredToDance = true;
+        }
+
+        if (!isScaredToDance)
+        {
+            if (isDance)
+            {
+                soundAnim.SetBool("isDancing", true);
+                FindFirstObjectByType<SAudioManager>().Play("luna_dance");
+                anim.SetBool("isDancing", true); 
+            }
+            else
+            {
+                soundAnim.SetBool("isDancing", false);
+                FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
+                anim.SetBool("isDancing", false); 
+            }
         }
     }
 

@@ -58,7 +58,7 @@ public class dialogueManagerNormal : MonoBehaviour
     {
 		if (dialogueTextObject.activeSelf)
 		{
-			if ((Input.GetKey(KeyCode.Z) || Input.GetKey(controllerDetection.jump)) && !isWritting)
+			if ((Input.GetKey(KeyCode.E) || Input.GetKey(controllerDetection.jump)) && !isWritting)
 			{
 				DisplayNextSentence();
 			}
@@ -80,14 +80,15 @@ public class dialogueManagerNormal : MonoBehaviour
 		originalNPCRotation = npc.rotation;
 		npcTransform = npc;
 
-		Vector3 npcLookDirection = (playerTransf.position - npc.position).normalized;
+		if (isNpc)
+		{
+			Vector3 npcLookDirection = (playerTransf.position - npc.position).normalized;
+			Quaternion npcTargetRotation = Quaternion.LookRotation(new Vector3(npcLookDirection.x, 0, npcLookDirection.z));
+			LeanTween.rotate(npc.gameObject, npcTargetRotation.eulerAngles, 0.5f).setEase(LeanTweenType.easeInOutSine);
+		}
+
 		Vector3 playerLookDirection = (npc.position - playerTransf.position).normalized;
-
-		// CALCULATE TARGET
-		Quaternion npcTargetRotation = Quaternion.LookRotation(new Vector3(npcLookDirection.x, 0, npcLookDirection.z));
 		Quaternion playerTargetRotation = Quaternion.LookRotation(new Vector3(playerLookDirection.x, 0, playerLookDirection.z));
-
-		LeanTween.rotate(npc.gameObject, npcTargetRotation.eulerAngles, 0.5f).setEase(LeanTweenType.easeInOutSine);
 		LeanTween.rotate(playerTransf.gameObject, playerTargetRotation.eulerAngles, 0.5f).setEase(LeanTweenType.easeInOutSine);
 	}
 
@@ -99,12 +100,10 @@ public class dialogueManagerNormal : MonoBehaviour
     public void StartDialogue (dialogue dialogue)
     {
 		player.isTalking = true;
+		dialogueCam.Priority = 20;
 
 		if (isNpc)
-		{
-			dialogueCam.Priority = 20;
 			anim.SetBool("isTalking", true);
-		}
 			
 		isShowing = true;
 		player.canMove = false;
@@ -164,6 +163,13 @@ public class dialogueManagerNormal : MonoBehaviour
     IEnumerator Typesentence(string sentence, string face, string textsound)
     {
 		nextSentenceButton.SetActive(false);
+
+		if (face == "leave")
+			anim.SetTrigger("Leave");
+
+		if (face == "activateShadowLuna")
+			StartCoroutine("ShadowLuna");
+
 
 		if (face != "wait")
 		{
@@ -246,12 +252,10 @@ public class dialogueManagerNormal : MonoBehaviour
 		skipwritting = false;
 		box.SetTrigger("dialogueOut");
 		sentences.Clear();
+		dialogueCam.Priority = 1;
 
 		if (isNpc)
-		{
-			dialogueCam.Priority = 1;
 			anim.SetBool("isTalking", false);
-		}
 			
 
 		yield return new WaitForSeconds(0.5f);
@@ -271,6 +275,26 @@ public class dialogueManagerNormal : MonoBehaviour
 	{
 		yield return new WaitForSeconds(0.5f);
 		isShowing = false;
+	}
+
+	IEnumerator ShadowLuna()
+	{
+		yield return new WaitForSeconds(1f);
+		Transform parentTransform = GameObject.Find("LUNASHADOW_TRIGGER").transform;
+		Transform lunaShadowTransform = parentTransform.Find("LUNASHADOW");
+		Transform triggerlunaShadowTransform = parentTransform.Find("TRIGGERCAMERA");
+
+		if (lunaShadowTransform != null && triggerlunaShadowTransform != null)
+		{
+			lunaShadowTransform.gameObject.SetActive(true);
+			triggerlunaShadowTransform.gameObject.SetActive(true);
+		}
+		else
+		{
+			Debug.Log("LunaShadow_NOTFOUND");
+		}
+
+		player.canOnlyMoveCam = false;
 	}
 
 }

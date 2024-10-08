@@ -26,10 +26,6 @@ public class NormalTextTrigger : MonoBehaviour
 
     public void Start()
     {
-        // test
-        PlayerPrefs.SetString("GameLanguage", "ENG");
-        PlayerPrefs.Save();
-
         currentLanguage = PlayerPrefs.GetString("GameLanguage", "ENG");
 
 
@@ -65,12 +61,13 @@ public class NormalTextTrigger : MonoBehaviour
                 {
                     dialogueManagerNormal.isNpc = true;
                     dialogueManagerNormal.AnimNpc(childAnimator);
-                    dialogueManagerNormal.lookAtNPC(gameObject.transform);
                 }
                 else
                 {
                     dialogueManagerNormal.isNpc = false;
                 }
+
+                dialogueManagerNormal.lookAtNPC(gameObject.transform);
 
                 //SEND DIALOGUE DEPENDING ON THE LANGUAGE
                 switch(currentLanguage)
@@ -96,19 +93,19 @@ public class NormalTextTrigger : MonoBehaviour
 
     public void OnTriggerStay(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.Z) || Input.GetKey(controllerDetection.interact)) && mustInteract && dialogueManagerNormal.isShowing == false && player.grounded)
+        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.E) || Input.GetKey(controllerDetection.interact)) && mustInteract && dialogueManagerNormal.isShowing == false && player.grounded)
         {
             if (isNPC)
             {
                 dialogueManagerNormal.isNpc = true;
                 dialogueManagerNormal.AnimNpc(childAnimator);
-                dialogueManagerNormal.lookAtNPC(gameObject.transform);
-                //dialogueManagerNormal.ActivateRig(cameraHeight);
             }
             else
             {
                 dialogueManagerNormal.isNpc = false;
             }
+
+            dialogueManagerNormal.lookAtNPC(gameObject.transform);
             
             //SEND DIALOGUE DEPENDING ON THE LANGUAGE
             switch(currentLanguage)

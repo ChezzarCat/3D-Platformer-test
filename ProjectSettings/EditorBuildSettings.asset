@@ -6,6 +6,21 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Lobby/Lobby.unity
+    path: Assets/Scenes/1. Lobby/Lobby.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab
+  - enabled: 1
+    path: Assets/Scenes/GameOver/GameOver.unity
+    guid: e1195e1c79808994ea94ca7705dd6f3d
+  - enabled: 1
+    path: Assets/Scenes/Parkour/Parkour.unity
+    guid: e3d7ded209a436d4cbb680cf4cfac353
+  - enabled: 1
+    path: Assets/Scenes/Secret1/Secret1.unity
+    guid: 7e16fac408d1e2349824202dd9afe4a4
+  - enabled: 1
+    path: Assets/Scenes/Secret2/Secret2.unity
+    guid: 25df8f7cdca8a274698ec2d93f1425eb
+  - enabled: 1
+    path: Assets/Scenes/Secret3/Secret3.unity
+    guid: 728f2ee7528185b45bc66caf662f7f80
   m_configObjects: {}
