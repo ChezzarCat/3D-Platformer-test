@@ -148,7 +148,7 @@ public class Pause : MonoBehaviour
 
             volumetext.text = volumeSaved.ToString();
 
-            if (currSelectionOptions == 0 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
+            if (currSelectionOptions == 0 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
             {
                 StartCoroutine("Cooldown", 0.1f);
                 volumeSaved++;
@@ -157,7 +157,7 @@ public class Pause : MonoBehaviour
                 PlayerPrefs.SetFloat("volume", volumeSaved);
                 PlayerPrefs.Save();
             }
-            else if (currSelectionOptions == 0 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
+            else if (currSelectionOptions == 0 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
             {
                 StartCoroutine("Cooldown", 0.1f);
                 volumeSaved--;
@@ -200,13 +200,13 @@ public class Pause : MonoBehaviour
             else if (currSelectionCAMX < 1)
                 currSelectionCAMX = 1;
 
-            if (currSelectionOptions == 2 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
+            if (currSelectionOptions == 2 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
             {
                 StartCoroutine("Cooldown", 0.2f);
                 currSelectionCAMX++;
                 FindFirstObjectByType<SAudioManager>().Play("menu_scroll");
             }
-            else if (currSelectionOptions == 2 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
+            else if (currSelectionOptions == 2 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
             {
                 StartCoroutine("Cooldown", 0.2f);
                 currSelectionCAMX--;
@@ -224,13 +224,13 @@ public class Pause : MonoBehaviour
             else if (currSelectionCAMY < 1)
                 currSelectionCAMY = 1;
 
-            if (currSelectionOptions == 3 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
+            if (currSelectionOptions == 3 && !cooldown && (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) || (Input.GetAxis("Horizontal") > 0) || (Input.GetAxis(pc.controllerDetection.axix1) > 0)))
             {
                 StartCoroutine("Cooldown", 0.2f);
                 currSelectionCAMY++;
                 FindFirstObjectByType<SAudioManager>().Play("menu_scroll");
             }
-            else if (currSelectionOptions == 3 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
+            else if (currSelectionOptions == 3 && !cooldown && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) || (Input.GetAxis("Horizontal") < 0) || (Input.GetAxis(pc.controllerDetection.axix1) < 0)))
             {
                 StartCoroutine("Cooldown", 0.2f);
                 currSelectionCAMY--;

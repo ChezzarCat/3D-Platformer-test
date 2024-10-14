@@ -17,6 +17,8 @@ public class dialogueManagerNormal : MonoBehaviour
 	public GameObject nextSentenceButton;
 	public CinemachineFreeLook dialogueCam;
 	public TMP_Text skipButton;
+	public GameObject jestburstPrefab;
+	public Transform transformJester;
 
 	[Header("TEXTBOX PORTRAITS")]
 	public GameObject[] allFaces;
@@ -37,6 +39,7 @@ public class dialogueManagerNormal : MonoBehaviour
 	private Quaternion originalNPCRotation;
 	private Transform npcTransform;
 	private string currentLanguage;
+	bool jesterHAStoleave = false;
 
     void Start()
     {
@@ -44,6 +47,7 @@ public class dialogueManagerNormal : MonoBehaviour
 		faces = new Queue<string>();
 		textsounds = new Queue<string>();
 		nextSentenceButton.SetActive(false);
+		jesterHAStoleave = false;
 		dialogueCam.Priority = 1;
 		currentLanguage = PlayerPrefs.GetString("GameLanguage", "ENG");
 
@@ -99,6 +103,7 @@ public class dialogueManagerNormal : MonoBehaviour
 
     public void StartDialogue (dialogue dialogue)
     {
+		jesterHAStoleave = false;
 		player.isTalking = true;
 		dialogueCam.Priority = 20;
 
@@ -129,6 +134,8 @@ public class dialogueManagerNormal : MonoBehaviour
     public void DisplayNextSentence ()
     {
 		//FindFirstObjectByType<SAudioManager>().Play("menu_select");
+		if (isNpc)
+			anim.SetBool("isTalking", true);
 		
     	if (sentences.Count == 0)
     	{
@@ -164,12 +171,54 @@ public class dialogueManagerNormal : MonoBehaviour
     {
 		nextSentenceButton.SetActive(false);
 
+		// LEAVE ------------------------------------
+
 		if (face == "leave")
 			anim.SetTrigger("Leave");
+
+		// SHOCKED ------------------------------------
+
+		if (face == "shocked")
+		{
+			anim.SetBool("isShock", true);
+			anim.SetBool("isTalking", false);
+		}
+
+		// SHADOW LUNA  ------------------------------------
 
 		if (face == "activateShadowLuna")
 			StartCoroutine("ShadowLuna");
 
+		// IGNORE TRIGGER  ------------------------------------
+
+		if (face == "destroyignore")
+		{
+			GameObject obj = GameObject.Find("IGNORE GUIDER");
+			if (obj != null)
+			{
+				Destroy(obj);
+			}
+			else
+				Debug.Log("IGNORE GUIDER not found in the scene.");
+		}
+
+		// JESTER DISSAPEAR ------------------------------------
+
+		if (face == "jesterLeave")
+		{
+			jesterHAStoleave = true;
+			anim.SetTrigger("isBurst");
+
+			if (jestburstPrefab != null)
+				StartCoroutine("jesterLeaveCoroutine");
+			else
+				Debug.Log("JesterBurst prefab not found.");
+
+			
+		}
+
+		// -------------------------------------------
+		// NORMAL  ------------------------------------
 
 		if (face != "wait")
 		{
@@ -222,6 +271,11 @@ public class dialogueManagerNormal : MonoBehaviour
 					}
 			}
 
+			if (face == "shocked")
+			{
+				anim.SetBool("isShock", false);
+			}
+
 			skipwritting = false;
 			isWritting = false;
 			nextSentenceButton.SetActive(true);
@@ -249,6 +303,9 @@ public class dialogueManagerNormal : MonoBehaviour
 
     IEnumerator EndDialogue()
     {	
+		if (jesterHAStoleave == true)
+			yield return new WaitForSeconds(0.5f);
+			
 		skipwritting = false;
 		box.SetTrigger("dialogueOut");
 		sentences.Clear();
@@ -267,6 +324,18 @@ public class dialogueManagerNormal : MonoBehaviour
 		player.isTalking = false;
     	dialogueTextObject.SetActive(false);
 		player.canMove = true;
+
+		if (jesterHAStoleave == true)
+		{
+			GameObject objJESTER = GameObject.Find("JESTER NPC");
+			if (objJESTER != null)
+			{
+				Destroy(objJESTER);
+			}
+			else
+				Debug.Log("JESTER NPC not found in the scene.");
+		}
+
 		StopAllCoroutines();
 		StartCoroutine(FrameWait());
     }
@@ -275,6 +344,14 @@ public class dialogueManagerNormal : MonoBehaviour
 	{
 		yield return new WaitForSeconds(0.5f);
 		isShowing = false;
+	}
+
+	IEnumerator jesterLeaveCoroutine()
+	{
+		FindFirstObjectByType<SAudioManager>().Play("laugh_jester");
+		yield return new WaitForSeconds(0.5f);
+		ParticleSystem jestburst = Instantiate(jestburstPrefab, transformJester.position, transformJester.rotation).GetComponent<ParticleSystem>();
+		Destroy(jestburst, 3);
 	}
 
 	IEnumerator ShadowLuna()

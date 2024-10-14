@@ -84,6 +84,9 @@ public class NormalTextTrigger : MonoBehaviour
                             dialogue_ESP = dialogueAlt_ESP;
                         break;
                 }
+
+
+                Destroy(gameObject);
                    
 
             }

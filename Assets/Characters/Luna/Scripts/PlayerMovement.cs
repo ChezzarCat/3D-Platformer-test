@@ -17,8 +17,6 @@ public class PlayerMovement : MonoBehaviour
     public ParticleSystem dashParticles;
     public ParticleSystem dashBurstParticles;
     public ParticleSystem jumpBurstParticles;
-    private int jumpCount = 0;
-    public int maxJumps = 1;
     public bool canMove = true;
     public bool canOnlyMoveCam = true;
     bool readyToJump = false;
@@ -91,8 +89,6 @@ public class PlayerMovement : MonoBehaviour
 
         if (!wasGrounded && grounded)
         {
-            anim.SetBool("isJumping", false);
-            jumpCount = 0;
             ResetJump();
         }
 
@@ -222,7 +218,7 @@ public class PlayerMovement : MonoBehaviour
         
 
         // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && readyToJump && jumpCount < maxJumps && CanJumpOnSlope() && grounded && pauseJumpFrames)
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && readyToJump && CanJumpOnSlope() && grounded && pauseJumpFrames) //  && jumpCount < maxJumps
             Jump();
     }
 
@@ -341,7 +337,6 @@ public class PlayerMovement : MonoBehaviour
         }
 
         DanceAction(false);
-        jumpCount++;
         anim.SetBool("isJumping", true);
 
         rb.useGravity = true;
@@ -358,6 +353,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void ResetJump()
     {
+        anim.SetBool("isJumping", false);
         StartCoroutine(WaitJumpFrames());
     }
 

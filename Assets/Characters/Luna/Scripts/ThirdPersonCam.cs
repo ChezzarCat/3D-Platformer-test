@@ -41,7 +41,7 @@ public class ThirdPersonCam : MonoBehaviour
         }
 
         // RECENTER CAM
-        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.JoystickButton5)) && canMove && !isCentering)
+        if ((Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl) || Input.GetKeyDown(KeyCode.JoystickButton5)) && canMove && !isCentering)
         {
             StartCoroutine(RecenterCamera(0.3f));
         }

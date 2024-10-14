@@ -50,5 +50,10 @@ public class MoodManager : MonoBehaviour
                 
                 break;
         }
+
+        if (moodLevel > 3)
+            moodLevel = 3;
+        else if (moodLevel < 0)
+            moodLevel = 0;
     }
 }
