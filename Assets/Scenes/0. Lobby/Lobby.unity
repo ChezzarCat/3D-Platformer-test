@@ -37313,6 +37313,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animFade: {fileID: 1049222429}
   animSound: {fileID: 1168893682}
+  lunaAnim: {fileID: 1802547659}
+  pm: {fileID: 100620255}
 --- !u!4 &1683892976
 Transform:
   m_ObjectHideFlags: 0
