@@ -52,7 +52,7 @@ public class bedTrigger : MonoBehaviour
 
 
             }
-            else if (!isTransitionating && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(pm.controllerDetection.interact)))
+            else if (!isTransitionating && canSelect && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(pm.controllerDetection.interact)))
             {
                 isExiting = true;
                 StartCoroutine("WaitFrames2");
@@ -70,7 +70,7 @@ public class bedTrigger : MonoBehaviour
 
     public void OnTriggerStay(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && !isExiting && !hasSelected && pm.grounded && (Input.GetKey(KeyCode.E) || Input.GetKey(pm.controllerDetection.interact)))
+        if (collision.gameObject.CompareTag("Player") && canSelect && !isExiting && !hasSelected && pm.grounded && (Input.GetKey(KeyCode.E) || Input.GetKey(pm.controllerDetection.interact)))
         {
             canSelect = false;
             StartCoroutine("WaitFrames");
@@ -91,13 +91,13 @@ public class bedTrigger : MonoBehaviour
 
     IEnumerator WaitFrames()
     {
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSeconds(0.5f);
         canSelect = true;
     }
 
     IEnumerator WaitFrames2()
     {
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSeconds(0.5f);
         isExiting = false;
     }
 
