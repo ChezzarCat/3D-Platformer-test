@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b77c5407dc277943b591ade9e6b18c5, type: 3}
   m_Name: LensDistortion
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   enabled:
     overrideState: 1
     value: 1
@@ -61,16 +61,16 @@ MonoBehaviour:
     value: {x: 0.5, y: 0.5}
   intensity:
     overrideState: 1
-    value: 0.327
+    value: 0.356
   smoothness:
     overrideState: 1
     value: 1
   roundness:
     overrideState: 1
-    value: 0.871
+    value: 0.924
   rounded:
     overrideState: 1
-    value: 1
+    value: 0
   mask:
     overrideState: 0
     value: {fileID: 0}
@@ -107,7 +107,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d65e486e4de6e5448a8fbb43dc8756a0, type: 3}
   m_Name: Grain
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   enabled:
     overrideState: 1
     value: 1
