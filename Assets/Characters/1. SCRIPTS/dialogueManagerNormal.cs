@@ -104,7 +104,6 @@ public class dialogueManagerNormal : MonoBehaviour
     public void StartDialogue (dialogue dialogue)
     {
 		jesterHAStoleave = false;
-		player.isTalking = true;
 		dialogueCam.Priority = 20;
 
 		if (isNpc)
@@ -113,7 +112,7 @@ public class dialogueManagerNormal : MonoBehaviour
 		isShowing = true;
 		player.canMove = false;
 		player.anim.SetFloat("Speed", 0f);
-		player.rb.velocity = Vector3.zero;
+		player.GetRigidbody().velocity = Vector3.zero;
     	dialogueTextObject.SetActive(true);
 		skipwritting = false;
 
@@ -321,7 +320,6 @@ public class dialogueManagerNormal : MonoBehaviour
 			LeanTween.rotate(npcTransform.gameObject, originalNPCRotation.eulerAngles, 0.5f).setEase(LeanTweenType.easeInOutSine);
 			
 
-		player.isTalking = false;
     	dialogueTextObject.SetActive(false);
 		player.canMove = true;
 
@@ -370,8 +368,6 @@ public class dialogueManagerNormal : MonoBehaviour
 		{
 			Debug.Log("LunaShadow_NOTFOUND");
 		}
-
-		player.canOnlyMoveCam = false;
 	}
 
 }

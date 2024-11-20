@@ -11,7 +11,7 @@ public class ThirdPersonCam : MonoBehaviour
     public Rigidbody rb;
 
     public float rotationSpeed;
-    public bool canMove;
+    public PlayerMovement pm;
     public CinemachineFreeLook cinemachineFreeLook;
     bool isCentering;
 
@@ -19,7 +19,6 @@ public class ThirdPersonCam : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        canMove = true;
 
         changeSensibility();
     }
@@ -33,7 +32,7 @@ public class ThirdPersonCam : MonoBehaviour
         Vector3 inputDir = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
         // If there's input and player can move, rotate player towards input direction
-        if (inputDir != Vector3.zero && canMove)
+        if (inputDir != Vector3.zero && pm.GetCanMove())
         {
             // Smoothly rotate playerObj towards input direction
             Quaternion targetRotation = Quaternion.LookRotation(inputDir.normalized);
@@ -41,7 +40,7 @@ public class ThirdPersonCam : MonoBehaviour
         }
 
         // RECENTER CAM
-        if ((Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl) || Input.GetKeyDown(KeyCode.JoystickButton5)) && canMove && !isCentering)
+        if ((Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl) || Input.GetKeyDown(KeyCode.JoystickButton5)) && pm.GetCanMove() && !isCentering)
         {
             StartCoroutine(RecenterCamera(0.3f));
         }

@@ -1,368 +1,124 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement")]
+    [Header("MOVEMENT")]
     public ThirdPersonCam thirdPersonCam;
     public float walkSpeed;
     public float runSpeed;
-    public float groundDrag = 5f; // Increase this value to reduce sliding
     public float jumpForce;
-    public float jumpCooldown;
-    public ParticleSystem runParticles;
-    public ParticleSystem dashParticles;
-    public ParticleSystem dashBurstParticles;
-    public ParticleSystem jumpBurstParticles;
-    public bool canMove = true;
-    public bool canOnlyMoveCam = true;
-    bool readyToJump = false;
-    bool pauseJumpFrames = true;
-    
-    [Header("Stamina")]
-    public Slider staminaSlider;
-    public Animator sliderAnim;
-    public float staminaDecreaseRate = 10f;  // How fast stamina drains when running
-    public float staminaRecoveryRate = 5f;   // How fast stamina recovers when not running
-    private float stamina = 100f;
-
-    [Header("Animator")]
+    public Transform orientation;
+    public ControllerDetection controllerDetection;
     public Animator anim;
     public Animator buttonPressAction;
-    public Animator soundAnim;
 
-    [Header("Ground Check")]
+    [Header("GROUND CHECK")]
     public float playerHeight;
     public LayerMask whatIsGround;
     public bool grounded;
 
-    [Header("Stupid stairs")]
-    public float maxSlopAngle;
-    private RaycastHit slopeHit;
-    private bool exitingSlope;
-    public Transform orientation;
-    public Transform backOrientation;
+    [Header("INTERNATE STATES")]
+    public bool canMove = true;
+    private Rigidbody rb;
+    private PlayerState currentState;
+    public SAudioManager audioManager;
+    public bool pauseJumpFrames;
+    public bool WaitFramesGround = true;
 
-    [Header("Others")]
-    public MoodManager moodManager;
-    public bool isTalking = false;
-    public ControllerDetection controllerDetection;
+    [Header("JUMP SETTINGS")]
+    public float maxJumpHeight = 2f;
+    public float maxJumpTime = 0.5f;
+    public int jumpCount = 0;
+    public float comboJumpTimeWindowMax = 0.2f;
+    public float comboJumpTimeWindow;
 
-    float horizontalInput;
-    float verticalInput;
+    [Header("PARTICLES")]
+    public ParticleSystem runParticles;
 
-    Vector3 moveDirection;
-    float currentSpeed;
-    float speed;
-    bool isDashing = false;
-    bool reachedZeroStamina = false;
-    private DeathManager gameOver;
-    bool isScaredToDance;
+    private float gravity;
+    private float initialJumpVelocity;
 
-    [HideInInspector]
-    public Rigidbody rb;
+    // Public method to check the current state
+    public bool IsInState<T>() where T : PlayerState
+    {
+        return currentState is T;
+    }
 
     private void Start()
     {
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
-        
         rb = GetComponent<Rigidbody>();
+        audioManager = Object.FindObjectOfType<SAudioManager>();
         rb.freezeRotation = true;
-        currentSpeed = walkSpeed;
+        comboJumpTimeWindow = comboJumpTimeWindowMax;
+        
+        // Set initial state to idle
+        SwitchState(new PlayerIdleState(this));
 
-        gameOver = FindObjectOfType<DeathManager>();
+        // Calculate gravity and initial jump velocity based on desired jump height and time
+        float timeToApex = maxJumpTime / 2;
+        gravity = (-2 * maxJumpHeight) / Mathf.Pow(timeToApex, 2);
+        initialJumpVelocity = (2 * maxJumpHeight) / timeToApex;
     }
-
-    // GROUND AND GENERAL FLAGS ---------------------------------------------------------
 
     private void Update()
     {
-        bool wasGrounded = grounded;
-        bool groundedFromOrientation = Physics.Raycast(orientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
-        bool groundedFromBackOrientation = Physics.Raycast(backOrientation.transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
+        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
 
-        grounded = groundedFromOrientation || groundedFromBackOrientation;
-
-        if (!wasGrounded && grounded)
+        if (canMove)
         {
-            ResetJump();
+            currentState?.Update();
         }
-
-        if (isTalking)
-        {
-            buttonPressAction.SetBool("isInTrigger", false);
-            dashParticles.Stop();
-            runParticles.Stop();
-        }
-            
-
-        if (canMove && canOnlyMoveCam)
-        {
-            MyInput();
-            thirdPersonCam.canMove = true;
-        }
-        else
-        {
-            FindFirstObjectByType<SAudioManager>().Stop("run");
-            FindFirstObjectByType<SAudioManager>().Stop("walk");
-
-            dashBurstParticles.Stop();
-            runParticles.Stop();
-
-            thirdPersonCam.canMove = false;
-        }
-
-        if (grounded)
-            rb.drag = groundDrag;
-        else
-            rb.drag = 0;
-
-
-        if (gameObject.transform.position.y < -30f)
-        {
-            canMove = false;
-            gameOver.StartCoroutine("Dies");
-        }
-
-
-        ControlSpeed();
-        UpdateStamina();
     }
 
     private void FixedUpdate()
     {
-        if (canMove && canOnlyMoveCam)
-            MovePlayer();
+        if (canMove)
+        {
+            currentState?.FixedUpdate();
+        }
+
+        if (grounded && comboJumpTimeWindow > 0 && jumpCount > 0)
+        {
+            DecreaseJumpCountTimer();
+        }
     }
 
-    // INPUT ---------------------------------------------------------
-
-    private void MyInput()
+    // Method to switch between different states
+    public void SwitchState(PlayerState newState)
     {
-        horizontalInput = Input.GetAxisRaw("Horizontal");
-        verticalInput = Input.GetAxisRaw("Vertical");
-
-        speed = new Vector2(horizontalInput, verticalInput).magnitude;
-
-        anim.SetFloat("Speed", speed);
-
-        if (grounded && speed < 0.01f && (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(controllerDetection.dance)))
-            DanceAction(true);
-        
-        // PARTICLES (PARTICLES CODE IS SUCH A MESS BUT IT WORKS, DO NOT TOUCH CUZ I TRIED TO MAKE IT MODULAR BUT I KEEP BREAKING IT SO I'LL JUST LEAVE IT LIKE THIS LOL)
-        if (speed > 0.01f && grounded && stamina > 0 && !reachedZeroStamina && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(controllerDetection.run)))
-        {
-            DanceAction(false);
-
-            if (dashBurstParticles.isPlaying)
-            {
-                dashBurstParticles.Stop();
-                dashBurstParticles.Play();
-            }
-            else
-            {
-                dashBurstParticles.Play();
-            }
-        }
-
-        if (isDashing)
-        {
-            runParticles.Stop();
-            FindFirstObjectByType<SAudioManager>().Stop("walk");
-            anim.SetBool("isDashing", true);
-            if (speed > 0.01f && grounded)
-            {
-                if (!dashParticles.isPlaying)
-                {
-                    dashParticles.Play();
-                    FindFirstObjectByType<SAudioManager>().Play("run");
-                }
-            }
-            else
-            {
-                if (dashParticles.isPlaying)
-                {
-                    dashParticles.Stop();
-                    FindFirstObjectByType<SAudioManager>().Stop("run");
-                }
-            }
-        }
-        else
-        {
-            
-            dashParticles.Stop();
-            FindFirstObjectByType<SAudioManager>().Stop("run");
-            if (speed > 0.01f && grounded)
-            {
-                anim.SetBool("isDashing", false);
-                DanceAction(false);
-                if (!runParticles.isPlaying)
-                {
-                    runParticles.Play();
-                    FindFirstObjectByType<SAudioManager>().Play("walk");
-                }
-            }
-            else
-            {
-                if (runParticles.isPlaying)
-                {
-                    runParticles.Stop();
-                    FindFirstObjectByType<SAudioManager>().Stop("walk");
-                }
-            }
-        }
-        
-
-        // JUMP
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && readyToJump && CanJumpOnSlope() && grounded && pauseJumpFrames) //  && jumpCount < maxJumps
-            Jump();
+        currentState?.ExitState();
+        currentState = newState;
+        currentState?.EnterState();
     }
 
-    // MOVEMENT ------------------------------------------------------------------
+    public void DecreaseJumpCountTimer()
+    {   
+        comboJumpTimeWindow -= Time.fixedDeltaTime;
 
-    private void ControlSpeed()
-    {
-        // RUN / DASH
-        if (grounded && canMove && stamina > 0 && !reachedZeroStamina && speed > 0.01f && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(controllerDetection.run)))
+        if (comboJumpTimeWindow <= 0 && jumpCount > 0)
         {
-            currentSpeed = runSpeed;
-            isDashing = true;
-
-            stamina -= staminaDecreaseRate * Time.deltaTime;
-            stamina = Mathf.Clamp(stamina, 0f, 100f);
-        }
-        else
-        {
-            currentSpeed = walkSpeed;
-            isDashing = false;
-        }
-
-        if (stamina == 0)
-        {
-            reachedZeroStamina = true;
-            sliderAnim.SetBool("isZero", true);
-        }
-        else if (stamina == 100)
-        {
-            reachedZeroStamina = false;
-            sliderAnim.SetBool("isZero", false);
+            jumpCount = 0;
+            comboJumpTimeWindow = comboJumpTimeWindowMax;
         }
     }
 
-    private void UpdateStamina()
-    {
-        // Replenish stamina when not dashing and clamp it to max 100
-        if (!isDashing)
-        {
-            stamina += staminaRecoveryRate * Time.deltaTime;
-            stamina = Mathf.Clamp(stamina, 0f, 100f);
-        }
+    // GETTERS AND SETTERS --------------------------------------
 
-        // Update the stamina slider
-        if (staminaSlider != null)
-        {
-            staminaSlider.value = stamina;
-        }
-    }
+    public Rigidbody GetRigidbody() {  return rb; }
 
-    private void MovePlayer()
-    {
-        moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
+    public bool GetCanMove() {  return canMove; }
 
-        if (OnSlope() && !exitingSlope)
-        {
-            if (isDashing && !CanJumpOnSlope())
-                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 5f, ForceMode.Force);
-            else if (!isDashing && !CanJumpOnSlope())
-                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 8f, ForceMode.Force);
-            else if (isDashing && CanJumpOnSlope())
-                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
-            else if (!isDashing && CanJumpOnSlope())
-                rb.AddForce(GetSlopeMoveDirection() * currentSpeed * 10f, ForceMode.Force);
+    public float GetGravity()  {  return gravity;  }
 
-            if(rb.velocity.y > 0)
-                rb.AddForce(Vector3.down * 80f, ForceMode.Force);
-        }
+    public float GetInitialJumpVelocity()   {  return initialJumpVelocity;  }
 
-        rb.AddForce(moveDirection.normalized * currentSpeed * 10f, ForceMode.Force);
+    public int GetJumpCount() { return jumpCount; }
 
-        // Clamping the velocity to currentSpeed to prevent sliding
-        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        if (flatVel.magnitude > currentSpeed)
-        {
-            Vector3 limitedVel = flatVel.normalized * currentSpeed;
-            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
-        }
+    public void ResetJumpCountTimer() { comboJumpTimeWindow = comboJumpTimeWindowMax; }
 
-        if (readyToJump)
-            rb.useGravity = !OnSlope();
-    }
-
-    private void SpeedControl()
-    {
-            Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
-            if (flatVel.magnitude > currentSpeed)
-            {
-                Vector3 limitedVel = flatVel.normalized * currentSpeed;
-                rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
-            }   
-    }
-
-    public void CanMove(bool canIt)
-    {
-        canMove = canIt;
-    }
-
-    // JUMP ------------------------------------------------------------
-
-    private void Jump()
-    {
-        readyToJump = false;
-            
-        FindFirstObjectByType<SAudioManager>().Play("jump");
-
-        if (jumpBurstParticles.isPlaying)
-        {
-            jumpBurstParticles.Stop();
-            jumpBurstParticles.Play();
-        }
-        else
-        {
-            jumpBurstParticles.Play();
-        }
-
-        DanceAction(false);
-        anim.SetBool("isJumping", true);
-
-        rb.useGravity = true;
-        exitingSlope = true;
-
-        // reset y velocity
-        if (rb.velocity.y > 0)
-        {
-            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        }
-        
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-    }
-
-    private void ResetJump()
-    {
-        anim.SetBool("isJumping", false);
-        StartCoroutine(WaitJumpFrames());
-    }
-
-    IEnumerator WaitJumpFrames()
-    {
-        yield return new WaitForSeconds(0.05f);
-        exitingSlope = false;
-        readyToJump = true;
-    }
+    // COROUTINES -------------------------------------------
 
     public IEnumerator WaitJumpFrames2()
     {
@@ -371,68 +127,10 @@ public class PlayerMovement : MonoBehaviour
         pauseJumpFrames = true;
     }
 
-    // DANCE ------------------------------------------------------------
-
-    public void DanceAction(bool isDance)
+    public IEnumerator WaitFramesGroundCoroutine()
     {
-        if (moodManager != null)
-        {
-            if (moodManager.moodLevel == 0)
-                isScaredToDance = false;
-            else
-                isScaredToDance = true;
-        }
-        else
-        {
-            isScaredToDance = true;
-        }
-
-        if (!isScaredToDance)
-        {
-            if (isDance)
-            {
-                soundAnim.SetBool("isDancing", true);
-                FindFirstObjectByType<SAudioManager>().Play("luna_dance");
-                anim.SetBool("isDancing", true); 
-            }
-            else
-            {
-                soundAnim.SetBool("isDancing", false);
-                FindFirstObjectByType<SAudioManager>().Stop("luna_dance");
-                anim.SetBool("isDancing", false); 
-            }
-        }
-    }
-
-    // SLOPE ------------------------------------------------------------
-
-    private bool OnSlope()
-    {
-        if(Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.3f))
-        {
-            float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
-            return angle < maxSlopAngle && angle != 0;
-        }
-
-        return false;
-    }
-
-    private Vector3 GetSlopeMoveDirection()
-    {
-        return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
-    }
-
-    private bool CanJumpOnSlope()
-    {
-        if (OnSlope())
-        {
-            if (rb.velocity.y > 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        yield return new WaitForSeconds(0.1f);
+        WaitFramesGround = false;
     }
 
     // TRIGGERS ------------------------------------------------------------
@@ -443,9 +141,13 @@ public class PlayerMovement : MonoBehaviour
         {
             buttonPressAction.SetBool("isInTrigger", false);
         }
-        else if (collision.gameObject.CompareTag("Trigger") && grounded && !isTalking)
+        else if (collision.gameObject.CompareTag("Trigger") && grounded && !IsInState<PlayerDancingState>() && canMove)
         {
             buttonPressAction.SetBool("isInTrigger", true);
+        }
+        else if (collision.gameObject.CompareTag("Trigger") && grounded && !IsInState<PlayerDancingState>() && !canMove)
+        {
+            buttonPressAction.SetBool("isInTrigger", false);
         }
     }
 
@@ -453,11 +155,11 @@ public class PlayerMovement : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Trigger") && !grounded)
         {
-            FindFirstObjectByType<SAudioManager>().Stop("menu_scroll");
+            audioManager.Stop("menu_scroll");
         }
-        else if (collision.gameObject.CompareTag("Trigger") && grounded && !isTalking)
+        else if (collision.gameObject.CompareTag("Trigger") && grounded && !IsInState<PlayerDancingState>())
         {
-            FindFirstObjectByType<SAudioManager>().Play("menu_scroll");
+            audioManager.Play("menu_scroll");
         }
     }
 
@@ -466,6 +168,269 @@ public class PlayerMovement : MonoBehaviour
         if (collision.gameObject.CompareTag("Trigger"))
         {
             buttonPressAction.SetBool("isInTrigger", false);
+        }
+    }
+}
+
+// MAIN CLASS
+
+public abstract class PlayerState
+{
+    protected PlayerMovement player;
+
+    public PlayerState(PlayerMovement player)
+    {
+        this.player = player;
+    }
+
+    public virtual void EnterState() { }
+    public virtual void ExitState() { }
+    public virtual void Update() { }
+    public virtual void FixedUpdate() { }
+}
+
+// IDLE -----------------------------------------------------------------------------
+
+public class PlayerIdleState : PlayerState
+{
+    public PlayerIdleState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.anim.SetFloat("Speed", 0);
+    }
+
+    public override void Update()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // If there is input, switch to walking state
+        if (input.magnitude > 0.1f)
+        {
+            player.SwitchState(new PlayerWalkingState(player));
+        }
+
+        // If space key is pressed, switch to jumping state
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && player.pauseJumpFrames && player.grounded && !player.IsInState<PlayerJumpingState>())
+        {
+            player.SwitchState(new PlayerJumpingState(player));
+        }
+
+        // If dance key is pressed, switch to dancing state
+        if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(player.controllerDetection.dance))
+        {
+            player.SwitchState(new PlayerDancingState(player));
+        }
+    }
+}
+
+// WALK -----------------------------------------------------------------------------
+
+public class PlayerWalkingState : PlayerState
+{
+    public PlayerWalkingState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.anim.SetFloat("Speed", 0.5f);
+        player.runParticles.Play();
+    }
+
+    public override void ExitState()
+    {
+        player.runParticles.Stop();
+    }
+
+    public override void Update()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // If there is no input, switch to idle state
+        if (input.magnitude < 0.1f)
+        {
+            player.SwitchState(new PlayerIdleState(player));
+        }
+
+        // If space key is pressed, switch to jumping state
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && player.grounded && !player.IsInState<PlayerJumpingState>())
+        {
+            player.SwitchState(new PlayerJumpingState(player));
+        }
+
+        // If dance key is pressed, switch to dancing state
+        if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(player.controllerDetection.dance))
+        {
+            player.SwitchState(new PlayerDancingState(player));
+        }
+    }
+
+    public override void FixedUpdate()
+    {
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // Adjust speed based on how much the joystick or key is pressed
+        float speedFactor = Mathf.Clamp(input.magnitude, 0.1f, 1f);
+        Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
+        player.GetRigidbody().AddForce(moveDirection.normalized * player.walkSpeed * speedFactor * 5f, ForceMode.Force);
+
+        // Set animator speed value based on the player's movement speed
+        player.anim.SetFloat("Speed", speedFactor);
+    }
+}
+
+// JUMP -----------------------------------------------------------------------------
+
+public class PlayerJumpingState : PlayerState
+{
+    private float fallMultiplier = 2.5f; // Adjust this to control how fast the player falls
+    private float jumpTimeMax = 0.5f; // Maximum time the player can hold the jump
+    private float jumpTimeCounter;
+    private bool isHoldingJump;
+    private float jumpCounterMultiplier = 1;
+
+    public PlayerJumpingState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.ResetJumpCountTimer();
+        player.jumpCount++;
+
+        switch (player.GetJumpCount())
+        {
+            case 0: jumpCounterMultiplier = 1; break;
+            case 1: jumpCounterMultiplier = 1; break;
+            case 2: jumpCounterMultiplier = 1.5f; break;
+            case 3: jumpCounterMultiplier = 2f; break;
+        }
+
+
+        player.GetRigidbody().drag = 5.5f;
+        player.GetRigidbody().velocity = new Vector3(player.GetRigidbody().velocity.x, 0, player.GetRigidbody().velocity.z); // Reset vertical velocity
+        player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier), ForceMode.Impulse);
+        player.anim.SetBool("isJumping", true);
+        player.grounded = false;
+        jumpTimeCounter = jumpTimeMax;
+        isHoldingJump = true;
+
+        player.WaitFramesGround = true;
+        player.StartCoroutine("WaitFramesGroundCoroutine");
+    }
+
+    public override void ExitState() 
+    {
+        if (player.GetRigidbody().velocity.x != 0f)
+        {
+            if (player.jumpCount >= 3)
+                player.jumpCount = 0;
+        }
+        else
+        {
+            if (player.jumpCount >= 2)
+                player.jumpCount = 0;
+        }
+
+        player.GetRigidbody().drag = 5;
+        player.anim.SetBool("isJumping", false);
+    }
+
+    public override void Update()
+    {
+        if (player.grounded && !player.WaitFramesGround)
+        {
+            player.SwitchState(new PlayerIdleState(player));
+        }
+
+        // Check if the jump button is released or jump time is over
+        if (!Input.GetKey(KeyCode.Space) && !Input.GetKey(player.controllerDetection.jump) && player.GetJumpCount() != 3)
+        {
+            isHoldingJump = false;
+        }
+    }
+
+    public override void FixedUpdate()
+    {
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // Adjust speed based on how much the joystick or key is pressed
+        float speedFactor = Mathf.Clamp(input.magnitude, 0.1f, 1f);
+        Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
+        player.GetRigidbody().AddForce(moveDirection.normalized * player.walkSpeed * speedFactor * 5f, ForceMode.Force);
+
+        // Set animator speed value based on the player's movement speed
+        player.anim.SetFloat("Speed", speedFactor);
+
+        // JUMP ---------------------------------------------
+
+        // Apply extra gravity to fall faster
+        if (player.GetRigidbody().velocity.y < 0)
+        {
+            Vector3 fallForce = Vector3.down * fallMultiplier * Mathf.Abs(Physics.gravity.y);
+            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
+        }
+        else if (!isHoldingJump && player.GetRigidbody().velocity.y > 0)
+        {
+            // Apply gravity multiplier when jump is not held to stop ascending
+            Vector3 fallForce = Vector3.down * fallMultiplier * Mathf.Abs(Physics.gravity.y);
+            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
+        }
+
+        // Continue applying upward force if jump is held and time allows
+        if (isHoldingJump && jumpTimeCounter > 0)
+        {
+            player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier) * 0.5f, ForceMode.Acceleration);
+            jumpTimeCounter -= Time.fixedDeltaTime;
+        }
+    }
+}
+
+// DANCE -----------------------------------------------------------------------------
+
+public class PlayerDancingState : PlayerState
+{
+    public PlayerDancingState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.anim.SetBool("isDancing", true);
+        player.audioManager.Play("luna_dance");
+    }
+
+    public override void ExitState() 
+    {
+        player.audioManager.Stop("luna_dance");
+        player.anim.SetBool("isDancing", false);
+    }
+
+    public override void Update()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // If there is input, switch to walking state
+        if (input.magnitude > 0.1f)
+        {
+            player.SwitchState(new PlayerWalkingState(player));
+        }
+
+        // If space key is pressed, switch to jumping state
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && player.pauseJumpFrames && player.grounded && !player.IsInState<PlayerJumpingState>())
+        {
+            player.SwitchState(new PlayerJumpingState(player));
+        }
+
+        // If dance key is released, stop dancing and switch to idle state
+        if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(player.controllerDetection.dance))
+        {
+            player.SwitchState(new PlayerIdleState(player));
         }
     }
 }

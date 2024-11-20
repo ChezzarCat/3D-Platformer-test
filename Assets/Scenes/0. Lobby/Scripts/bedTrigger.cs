@@ -60,7 +60,6 @@ public class bedTrigger : MonoBehaviour
                 dialogueCam.Priority = 1;
 
                 pm.canMove = true;
-                pm.isTalking = false;
 
                 nightmareUI.SetActive(false);
                 FindFirstObjectByType<SAudioManager>().Play("menu_back");
@@ -70,7 +69,7 @@ public class bedTrigger : MonoBehaviour
 
     public void OnTriggerStay(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && canSelect && !isExiting && !hasSelected && pm.grounded && (Input.GetKey(KeyCode.E) || Input.GetKey(pm.controllerDetection.interact)))
+        if (collision.gameObject.CompareTag("Player") && canSelect && !isExiting && !hasSelected && pm.IsInState<PlayerJumpingState>() && (Input.GetKey(KeyCode.E) || Input.GetKey(pm.controllerDetection.interact)))
         {
             canSelect = false;
             StartCoroutine("WaitFrames");
@@ -80,11 +79,9 @@ public class bedTrigger : MonoBehaviour
             dialogueCam.Priority = 20;
 
             pm.anim.SetFloat("Speed", 0f);
-		    pm.rb.velocity = Vector3.zero;
+		    pm.GetRigidbody().velocity = Vector3.zero;
             pm.canMove = false;
-            pm.isTalking = true;
 
-            pm.DanceAction(false);
             FindFirstObjectByType<SAudioManager>().Play("menu_select");
         }
     }

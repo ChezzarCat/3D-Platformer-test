@@ -53,7 +53,7 @@ public class NormalTextTrigger : MonoBehaviour
 
     public void OnTriggerEnter(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && player.grounded)
+        if (collision.gameObject.CompareTag("Player") && ((Input.GetKey(KeyCode.E) || Input.GetKey(controllerDetection.interact))) && !player.IsInState<PlayerJumpingState>())
         {
             if (!mustInteract)
             {
@@ -96,7 +96,7 @@ public class NormalTextTrigger : MonoBehaviour
 
     public void OnTriggerStay(Collider collision)
     {
-        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.E) || Input.GetKey(controllerDetection.interact)) && mustInteract && dialogueManagerNormal.isShowing == false && player.grounded)
+        if (collision.gameObject.CompareTag("Player") && (Input.GetKey(KeyCode.E) || Input.GetKey(controllerDetection.interact)) && mustInteract && dialogueManagerNormal.isShowing == false && !player.IsInState<PlayerJumpingState>())
         {
             if (isNPC)
             {

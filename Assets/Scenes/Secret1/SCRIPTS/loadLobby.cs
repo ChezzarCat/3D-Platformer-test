@@ -23,7 +23,6 @@ public class loadLobby : MonoBehaviour
         fade.SetActive(true);
         music1.SetActive(false);
         music2.SetActive(false);
-        pm.canOnlyMoveCam = false;
         yield return new WaitForSeconds(delay);
         SceneManager.LoadScene("Lobby");
     }
