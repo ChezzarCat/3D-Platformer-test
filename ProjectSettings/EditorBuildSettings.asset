@@ -14,7 +14,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/GameOver/GameOver.unity
     guid: e1195e1c79808994ea94ca7705dd6f3d
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Parkour/Parkour.unity
     guid: e3d7ded209a436d4cbb680cf4cfac353
   - enabled: 1

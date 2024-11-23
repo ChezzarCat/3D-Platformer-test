@@ -17,6 +17,7 @@ public class ControllerDetection : MonoBehaviour
     public KeyCode run;
     public KeyCode dance;
     public KeyCode pause;
+    public string crouch;
     public string axix1;
     public string axix2;
 
@@ -69,6 +70,7 @@ public class ControllerDetection : MonoBehaviour
                 run = KeyCode.JoystickButton0;
                 dance = KeyCode.JoystickButton3;
                 pause = KeyCode.JoystickButton9;
+                crouch = "R2-PS4";
                 axix1 = "Axis 7";
                 axix2 = "Axis 8";
 
@@ -129,6 +131,7 @@ public class ControllerDetection : MonoBehaviour
         run = KeyCode.JoystickButton2;
         dance = KeyCode.JoystickButton3;
         pause = KeyCode.JoystickButton7;
+        crouch = "R2-XBOX";
         axix1 = "Axis 6";
         axix2 = "Axis 7";
     }

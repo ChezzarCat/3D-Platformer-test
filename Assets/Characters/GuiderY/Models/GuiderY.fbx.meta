@@ -8,7 +8,7 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: GuiderY
-    second: {fileID: 2100000, guid: c5985402af00b8a4db62f43685c14e68, type: 2}
+    second: {fileID: 2100000, guid: 21b50127a7215d54fabe7bfc8b75e51e, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -21,7 +21,8 @@ ModelImporter:
     optimizeGameObjects: 0
     removeConstantScaleCurves: 0
     motionNodeName: 
-    rigImportErrors: 
+    rigImportErrors: "Invalid Avatar Rig Configuration. Missing or invalid transform:\n\tRequired
+      human bone 'Hips' not found\n"
     rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
