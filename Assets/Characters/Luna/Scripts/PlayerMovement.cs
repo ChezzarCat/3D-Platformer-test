@@ -314,7 +314,7 @@ public class PlayerIdleState : PlayerState
         {
             player.SwitchState(new PlayerCrouchState(player));
         }
-        else if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && input.magnitude > 0.1f)
+        else if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && input.magnitude > 0.1f)
         {
             if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && player.grounded && !player.IsInState<PlayerJumpingState>())
             {
@@ -379,11 +379,11 @@ public class PlayerWalkingState : PlayerState
         }
 
         // If player is crouching, switch to crouch
-        if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded)
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded)
         {
             player.SwitchState(new PlayerCrouchState(player));
         }
-        else if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && input.magnitude > 0.1f)
+        else if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && input.magnitude > 0.1f)
         {
             if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && player.grounded && !player.IsInState<PlayerJumpingState>())
             {
@@ -671,7 +671,7 @@ public class PlayerLongJumpState : PlayerState
             float horizontalInput = Input.GetAxisRaw("Horizontal");
             float verticalInput = Input.GetAxisRaw("Vertical");
 
-            Vector3 moveDirection = player.orientation.forward + player.orientation.right * horizontalInput;
+            Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
             player.GetRigidbody().AddForce(moveDirection.normalized * longJumpPower * 0.5f, ForceMode.Force);
 
             jumpTimeCounter -= Time.fixedDeltaTime;
@@ -794,7 +794,11 @@ public class PlayerCrouchState : PlayerState
         }
 
         // If player stops crouching, switch to idle state
-        if (Input.GetKeyUp(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) <= 0.1f)
+        if (Input.GetKeyUp(KeyCode.LeftShift) && player.controllerDetection.activeController == "Keyboard")
+        {
+            player.SwitchState(new PlayerIdleState(player));
+        }
+        else if (Input.GetAxis(player.controllerDetection.crouch) <= 0.1f && player.controllerDetection.activeController != "Keyboard")
         {
             player.SwitchState(new PlayerIdleState(player));
         }
@@ -847,7 +851,11 @@ public class PlayerWalkCrouchState : PlayerState
         }
 
         // If player stops crouching, switch to idle state
-        if (Input.GetKeyUp(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) <= 0.1f)
+        if (Input.GetKeyUp(KeyCode.LeftShift) && player.controllerDetection.activeController == "Keyboard")
+        {
+            player.SwitchState(new PlayerIdleState(player));
+        }
+        else if (Input.GetAxis(player.controllerDetection.crouch) <= 0.1f && player.controllerDetection.activeController != "Keyboard")
         {
             player.SwitchState(new PlayerIdleState(player));
         }
