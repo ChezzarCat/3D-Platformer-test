@@ -11,6 +11,7 @@ public class PlayerMovement : MonoBehaviour
     public float runSpeed;
     public float jumpForce;
     public Transform orientation;
+    public Transform lunaRotation;
     public ControllerDetection controllerDetection;
     public Animator anim;
     public Animator buttonPressAction;
@@ -59,6 +60,7 @@ public class PlayerMovement : MonoBehaviour
     public ParticleSystem burst2;
     public ParticleSystem burst3;
     public ParticleSystem burstSpecial;
+    public ParticleSystem burstDive;
 
     public ParticleSystem jumpBurst;
 
@@ -70,6 +72,9 @@ public class PlayerMovement : MonoBehaviour
     public SAudioManager audioManager;
     public bool isR2Released = true;
     public bool isBounceParry = false;
+    public bool rollEnded = true;
+    public bool rollEndedHalf = true;
+    public float bounceMultiplier = 1;
 
     public bool IsInState<T>() where T : PlayerState
     {
@@ -85,7 +90,11 @@ public class PlayerMovement : MonoBehaviour
         comboJumpTimeWindow = comboJumpTimeWindowMax;
         coyoteTime = coyoteTimeMAX;
         jumpBufferTime = 0;
+        bounceMultiplier = 1;
 
+        rollEnded = true;
+        rollEndedHalf = true;
+        
         jumpBuffered = false;
         isGroundPoundFalling = true;
         isBounceParry = false;
@@ -108,7 +117,7 @@ public class PlayerMovement : MonoBehaviour
             currentState?.Update();
 
             // Buffer jump input
-            if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && rb.velocity.y < 0 && !IsInState<PlayerLongJumpState>())
+            if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && rb.velocity.y < 0 && !IsInState<PlayerLongJumpState>() && !IsInState<PlayerDiveState>() && !IsInState<PlayerRollState>())
             {
                 jumpBuffered = true;
                 jumpBufferTime = jumpBufferTimeMax;
@@ -178,6 +187,8 @@ public class PlayerMovement : MonoBehaviour
         currentState?.ExitState();
         currentState = newState;
         currentState?.EnterState();
+
+        Debug.Log(currentState);
     }
 
     public void DecreaseJumpCountTimer()
@@ -223,6 +234,14 @@ public class PlayerMovement : MonoBehaviour
     {
         yield return new WaitForSeconds(0.1f);
         WaitFramesGround = false;
+    }
+
+    public IEnumerator RollTime()
+    {
+        yield return new WaitForSeconds(0.1f);
+        rollEndedHalf = true;
+        yield return new WaitForSeconds(0.5f);
+        rollEnded = true;
     }
 
     public IEnumerator WaitGroundPoundIntro()
@@ -760,8 +779,6 @@ public class PlayerGroundPoundState : PlayerState
         player.transform.localScale = targetScale;
     }
 
-    
-
     public override void Update()
     {
         if (player.isGroundPoundFalling == true)
@@ -776,9 +793,15 @@ public class PlayerGroundPoundState : PlayerState
                 player.burstSpecial.Play();
                 player.isBounceParry = true;
             }
-                
             
             player.SwitchState(new PlayerJumpPoundState(player));
+        }
+        else
+        {
+            if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(player.controllerDetection.run))
+            {
+                player.SwitchState(new PlayerDiveState(player));
+            }
         }
 
     }
@@ -839,6 +862,8 @@ public class PlayerJumpPoundState : PlayerState
 
     private bool isScalingToJump = true;
 
+    private float parryMultiplier = 1;
+
     public PlayerJumpPoundState(PlayerMovement player) : base(player) { }
 
     public override void EnterState()
@@ -851,9 +876,6 @@ public class PlayerJumpPoundState : PlayerState
         player.jumpBurst.Play();
 
     
-        player.GetRigidbody().drag = 4f;
-        player.GetRigidbody().velocity = new Vector3(player.GetRigidbody().velocity.x, 0, player.GetRigidbody().velocity.z); // Reset vertical velocity
-        player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier), ForceMode.Impulse);
         
         player.anim.SetBool("isJumping", true);
 
@@ -862,14 +884,21 @@ public class PlayerJumpPoundState : PlayerState
             player.PauseImpactStarter(0.2f, 0.3f);
             player.shakeScript.TriggerShake(4f, 6f, 0.2f);
             player.anim.SetInteger("jumpState", 6);
+
+            parryMultiplier = 1.5f;
         }
         else
         {
             player.PauseImpactStarter(0.1f, 0.07f);
             player.shakeScript.TriggerShake(3f, 5f, 0.1f);
             player.anim.SetInteger("jumpState", 5);
+
+            parryMultiplier = 1;
         }
 
+        player.GetRigidbody().drag = 4f;
+        player.GetRigidbody().velocity = new Vector3(player.GetRigidbody().velocity.x, 0, player.GetRigidbody().velocity.z); // Reset vertical velocity
+        player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier * parryMultiplier), ForceMode.Impulse);
         
         player.isBounceParry = false;
 
@@ -965,6 +994,238 @@ public class PlayerJumpPoundState : PlayerState
             player.transform.localScale = Vector3.Lerp(jumpScale, targetScale, scaleLerpFactor);
 
         }
+    }
+
+}
+
+// DIVE ---------------------------------------------------------------------------
+
+public class PlayerDiveState : PlayerState
+{
+    private float divePower = 170f;
+
+    private Vector3 targetScale = new Vector3(1f, 1f, 1f);
+    private Vector3 jumpScale = new Vector3(1.3f, 0.8f, 1.3f);
+    private float scaleLerpFactor = 0f;
+
+    public PlayerDiveState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.anim.SetBool("isGroundPounding", false);
+
+        player.jumpBufferTime = 0;
+        
+        player.audioManager.Play("jump");
+        player.burstDive.Play();
+        player.jumpBurst.Play();
+
+        player.GetRigidbody().drag = 2f;
+
+        player.GetRigidbody().velocity = new Vector3(player.GetRigidbody().velocity.x, 0, player.GetRigidbody().velocity.z); // Reset vertical velocity
+        player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce - 8), ForceMode.Impulse);
+        Vector3 moveDirection = player.lunaRotation.forward;
+        player.GetRigidbody().AddForce(moveDirection.normalized * divePower * 5f, ForceMode.Force);
+
+        player.anim.SetInteger("jumpState", 7);
+        player.anim.SetBool("isJumping", true);
+
+        player.grounded = false;
+
+        player.WaitFramesGround = true;
+        player.StartCoroutine("WaitFramesGroundCoroutine");
+    }
+
+    public override void ExitState() 
+    {
+        player.transform.localScale = targetScale;
+
+        // Maintain horizontal velocity when transitioning out of Dive
+        Vector3 currentVelocity = player.GetRigidbody().velocity;
+        player.GetRigidbody().velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
+
+        player.anim.SetBool("isJumping", false);
+        player.burst2.Play();
+    }
+
+
+
+    public override void Update()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+
+        if (player.grounded)
+        {
+            if (Input.GetKey(KeyCode.Z) || Input.GetKey(player.controllerDetection.run))
+            {
+                player.burst3.Play();
+                player.PauseImpactStarter(0.1f, 0.07f);
+                player.shakeScript.TriggerShake(3f, 5f, 0.1f);
+                player.bounceMultiplier = 1.5f;
+
+                player.SwitchState(new PlayerRollState(player));
+            }
+            else 
+            {
+                // If player is crouching, switch to crouch
+                if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && !player.WaitFramesGround)
+                {
+                    player.SwitchState(new PlayerCrouchState(player));
+                }
+                else if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && input.magnitude > 0.1f && !player.WaitFramesGround)
+                {
+                    if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && !player.IsInState<PlayerJumpingState>())
+                    {
+                        player.SwitchState(new PlayerLongJumpState(player));
+                    }
+                }
+                else if (!player.WaitFramesGround && input.magnitude < 0.1f)
+                {
+                    player.SwitchState(new PlayerIdleState(player));
+                }
+                else if (!player.WaitFramesGround && input.magnitude > 0.1f)
+                {
+                    player.SwitchState(new PlayerWalkingState(player));
+                }
+                
+            }
+            
+        }
+
+
+    }
+
+    public override void FixedUpdate()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+
+        Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
+        player.GetRigidbody().AddForce(moveDirection.normalized * 15, ForceMode.Force);
+
+        // Apply extra gravity to fall faster
+        if ((player.GetRigidbody().velocity.y < 0))
+        {
+            Vector3 fallForce = Vector3.down * player.fallMultiplier * Mathf.Abs(Physics.gravity.y);
+            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
+        }
+
+        SmoothScaleBackToNormal();
+    }
+
+    private void SmoothScaleBackToNormal()
+    {
+        float lerpSpeed = 4f; // Speed at which to interpolate back to the original scale
+        scaleLerpFactor += Time.fixedDeltaTime * lerpSpeed;
+        scaleLerpFactor = Mathf.Clamp(scaleLerpFactor, 0f, 1f);
+        player.transform.localScale = Vector3.Lerp(jumpScale, targetScale, scaleLerpFactor);
+    }
+}
+
+// ROLL ---------------------------------------------------------------------------
+
+public class PlayerRollState : PlayerState
+{
+    private float divePower = 100f;
+    private float divePowerParry = 200f;
+
+    public PlayerRollState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.rollEnded = false;
+        player.rollEndedHalf = false;
+
+        player.anim.SetBool("isGroundPounding", false);
+
+        player.jumpBufferTime = 0;
+        
+        player.audioManager.Play("jump");
+        player.burstDive.Play();
+        player.jumpBurst.Play();
+
+        player.GetRigidbody().drag = 2f;
+
+        Vector3 moveDirection = player.lunaRotation.forward;
+        player.GetRigidbody().AddForce(moveDirection.normalized * (divePower * player.bounceMultiplier) * 5f, ForceMode.Force);
+
+        player.anim.SetInteger("jumpState", 3);
+        player.anim.SetBool("isJumping", true);
+
+        player.grounded = false;
+
+        player.WaitFramesGround = true;
+        player.StartCoroutine("WaitFramesGroundCoroutine");
+        player.StartCoroutine("RollTime");
+    }
+
+    public override void ExitState() 
+    {
+        player.rollEnded = true;
+        player.rollEndedHalf = true;
+        player.bounceMultiplier = 1;
+        // Maintain horizontal velocity when transitioning out of roll
+        Vector3 currentVelocity = player.GetRigidbody().velocity;
+        player.GetRigidbody().velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
+
+        player.anim.SetBool("isJumping", false);
+        player.burst2.Play();
+    }
+
+
+
+    public override void Update()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        if (player.rollEndedHalf == true)
+        {
+            if ((Input.GetKey(KeyCode.Space) || Input.GetKey(player.controllerDetection.jump)) && player.grounded && !player.IsInState<PlayerJumpingState>())
+            {
+                player.SwitchState(new PlayerLongJumpState(player));
+            }
+        }
+        
+        if (player.rollEnded == true)
+        {
+            // If player is still , switch to idle
+            if (player.grounded && !player.WaitFramesGround && input.magnitude < 0.1f)
+            {
+                player.SwitchState(new PlayerIdleState(player));
+            }
+            else if (player.grounded && !player.WaitFramesGround && input.magnitude > 0.1f)
+            {
+                player.SwitchState(new PlayerWalkingState(player));
+            }
+
+            // If player is crouching, switch to crouch
+            if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && !player.WaitFramesGround)
+            {
+                player.SwitchState(new PlayerCrouchState(player));
+            }
+            else if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.grounded && input.magnitude > 0.1f && !player.WaitFramesGround)
+            {
+                
+                player.SwitchState(new PlayerWalkCrouchState(player));
+            }
+        }
+
+
+
+    }
+
+    public override void FixedUpdate()
+    {
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+
+        Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
+        player.GetRigidbody().AddForce(moveDirection.normalized * 15, ForceMode.Force);
     }
 
 }
@@ -1105,6 +1366,11 @@ public class PlayerCrouchState : PlayerState
         {
             player.SwitchState(new PlayerFallingState(player));
         }
+
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(player.controllerDetection.run))
+        {
+            player.SwitchState(new PlayerRollState(player));
+        }
     }
 }
 
@@ -1162,6 +1428,11 @@ public class PlayerWalkCrouchState : PlayerState
         if (!player.IsInState<PlayerLongJumpState>() && !player.IsInState<PlayerJumpingState>() && !player.grounded)
         {
             player.SwitchState(new PlayerFallingState(player));
+        }
+
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(player.controllerDetection.run))
+        {
+            player.SwitchState(new PlayerRollState(player));
         }
     }
 

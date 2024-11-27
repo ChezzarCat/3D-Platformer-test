@@ -32,7 +32,7 @@ public class ThirdPersonCam : MonoBehaviour
         Vector3 inputDir = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
         // If there's input and player can move, rotate player towards input direction
-        if (inputDir != Vector3.zero && pm.GetCanMove())
+        if (inputDir != Vector3.zero && pm.GetCanMove() && !pm.IsInState<PlayerDiveState>())
         {
             // Smoothly rotate playerObj towards input direction
             Quaternion targetRotation = Quaternion.LookRotation(inputDir.normalized);
