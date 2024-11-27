@@ -39,6 +39,7 @@ public class PlayerMovement : MonoBehaviour
 
     public bool pauseJumpFrames;
     public bool WaitFramesGround = true;
+    public bool isGroundPoundFalling = true;
 
     private float gravity;
     private float initialJumpVelocity;
@@ -56,14 +57,19 @@ public class PlayerMovement : MonoBehaviour
 
     public ParticleSystem burst1;
     public ParticleSystem burst2;
+    public ParticleSystem burst3;
+    public ParticleSystem burstSpecial;
 
     public ParticleSystem jumpBurst;
 
     [Header("INTERNATE STATES")]
+    public CinemachineShake shakeScript;
     public bool canMove = true;
     private Rigidbody rb;
     private PlayerState currentState;
     public SAudioManager audioManager;
+    public bool isR2Released = true;
+    public bool isBounceParry = false;
 
     public bool IsInState<T>() where T : PlayerState
     {
@@ -74,11 +80,15 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         audioManager = Object.FindObjectOfType<SAudioManager>();
+        shakeScript = FindObjectOfType<CinemachineShake>();
         rb.freezeRotation = true;
         comboJumpTimeWindow = comboJumpTimeWindowMax;
         coyoteTime = coyoteTimeMAX;
         jumpBufferTime = 0;
+
         jumpBuffered = false;
+        isGroundPoundFalling = true;
+        isBounceParry = false;
         
         // Set initial state to idle
         SwitchState(new PlayerIdleState(this));
@@ -98,11 +108,16 @@ public class PlayerMovement : MonoBehaviour
             currentState?.Update();
 
             // Buffer jump input
-            if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && rb.velocity.y < 0)
+            if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(controllerDetection.jump)) && rb.velocity.y < 0 && !IsInState<PlayerLongJumpState>())
             {
                 jumpBuffered = true;
                 jumpBufferTime = jumpBufferTimeMax;
             }
+        }
+
+        if (Input.GetAxis(controllerDetection.crouch) <= 0.1f)
+        {
+            isR2Released = true;
         }
 
         // TESTING -------------
@@ -140,7 +155,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // Apply increasing downward force when not grounded to simulate more realistic gravity
-        if (!grounded)
+        if (!grounded && isGroundPoundFalling)
         {
             fallSpeed += fallAcceleration * Time.fixedDeltaTime;
             rb.AddForce(Vector3.down * fallSpeed, ForceMode.Acceleration);
@@ -176,6 +191,11 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    public void PauseImpactStarter(float timescale, float seconds)
+    {
+        StartCoroutine(PauseImpact(timescale, seconds));
+    }
+
     // GETTERS AND SETTERS --------------------------------------
 
     public Rigidbody GetRigidbody() {  return rb; }
@@ -203,6 +223,19 @@ public class PlayerMovement : MonoBehaviour
     {
         yield return new WaitForSeconds(0.1f);
         WaitFramesGround = false;
+    }
+
+    public IEnumerator WaitGroundPoundIntro()
+    {
+        yield return new WaitForSeconds(0.3f);
+        isGroundPoundFalling = true;
+    }
+
+    public IEnumerator PauseImpact(float timescale, float seconds)
+    {
+        Time.timeScale = timescale;
+        yield return new WaitForSecondsRealtime(seconds);
+        Time.timeScale = 1f;
     }
 
     // TRIGGERS ------------------------------------------------------------
@@ -422,9 +455,9 @@ public class PlayerJumpingState : PlayerState
     private float jumpCounterMultiplier = 1;
 
     private Vector3 targetScale = new Vector3(1f, 1f, 1f);
-    private Vector3 jumpScale = new Vector3(0.8f, 1.2f, 0.8f);
-    private Vector3 jumpScale2 = new Vector3(0.7f, 1.4f, 0.7f);
-    private Vector3 jumpScale3 = new Vector3(0.5f, 1.6f, 0.5f);
+    private Vector3 jumpScale = new Vector3(0.7f, 1.4f, 0.7f);
+    private Vector3 jumpScale2 = new Vector3(0.5f, 1.6f, 0.5f);
+    private Vector3 jumpScale3 = new Vector3(0.4f, 1.8f, 0.4f);
     private float scaleLerpFactor = 0f;
 
     public PlayerJumpingState(PlayerMovement player) : base(player) { }
@@ -446,7 +479,7 @@ public class PlayerJumpingState : PlayerState
         {
             case 0: jumpCounterMultiplier = 1; player.transform.localScale = jumpScale; break;
             case 1: jumpCounterMultiplier = 1; player.transform.localScale = jumpScale; break;
-            case 2: jumpCounterMultiplier = 1.7f; player.transform.localScale = jumpScale2; break;
+            case 2: jumpCounterMultiplier = 1.5f; player.transform.localScale = jumpScale2; break;
             case 3: jumpCounterMultiplier = 2.2f; player.transform.localScale = jumpScale3; break;
         }
 
@@ -482,7 +515,6 @@ public class PlayerJumpingState : PlayerState
         }
         
         player.anim.SetBool("isJumping", false);
-        player.burst2.Play();
     }
 
 
@@ -496,9 +528,24 @@ public class PlayerJumpingState : PlayerState
 
     public override void Update()
     {
-        if (player.grounded && !player.WaitFramesGround)
+        float horizontalInput = Input.GetAxisRaw("Horizontal");
+        float verticalInput = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        if (player.grounded && !player.WaitFramesGround && (input.magnitude > 0.1f))
+        {
+            player.SwitchState(new PlayerWalkingState(player));
+            player.burst2.Play();
+        }
+        else if (player.grounded && !player.WaitFramesGround)
         {
             player.SwitchState(new PlayerIdleState(player));
+            player.burst2.Play();
+        }
+
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && !player.WaitFramesGround && player.isR2Released)
+        {
+            player.SwitchState(new PlayerGroundPoundState(player));
         }
 
         // Check if the jump button is released or jump time is over
@@ -573,7 +620,7 @@ public class PlayerLongJumpState : PlayerState
     private float jumpTimeCounter;
 
     private Vector3 targetScale = new Vector3(1f, 1f, 1f);
-    private Vector3 jumpScale = new Vector3(0.6f, 1.6f, 0.6f);
+    private Vector3 jumpScale = new Vector3(0.5f, 1.7f, 0.5f);
     private float scaleLerpFactor = 0f;
 
     public PlayerLongJumpState(PlayerMovement player) : base(player) { }
@@ -659,13 +706,6 @@ public class PlayerLongJumpState : PlayerState
 
     public override void FixedUpdate()
     {
-        // Apply extra gravity to fall faster
-        /*if ((player.GetRigidbody().velocity.y < 0))
-        {
-            Vector3 fallForce = Vector3.down * (player.fallMultiplier) * Mathf.Abs(Physics.gravity.y);
-            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
-        }*/
-
         if (jumpTimeCounter > 0)
         {
             float horizontalInput = Input.GetAxisRaw("Horizontal");
@@ -689,6 +729,246 @@ public class PlayerLongJumpState : PlayerState
     }
 }
 
+// GROUND-POUND ---------------------------------------------------------------------------
+
+public class PlayerGroundPoundState : PlayerState
+{
+    private Vector3 targetScale = new Vector3(1f, 1f, 1f);
+    private Vector3 fallScale = new Vector3(0.5f, 1.5f, 0.5f);
+    private float scaleLerpFactor = 0f;
+    private float scaleLerpFactor2 = 0f;
+
+    private bool isScalingToFall = true;
+
+    public PlayerGroundPoundState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.isR2Released = false;
+        player.GetRigidbody().useGravity = false;
+        player.GetRigidbody().velocity = Vector3.zero;
+        player.grounded = false;
+        
+        player.isGroundPoundFalling = false;
+        player.anim.SetBool("isGroundPounding", true);
+        player.StartCoroutine("WaitGroundPoundIntro");
+    }
+
+    public override void ExitState() 
+    {
+        player.GetRigidbody().useGravity = true;
+        player.transform.localScale = targetScale;
+    }
+
+    
+
+    public override void Update()
+    {
+        if (player.isGroundPoundFalling == true)
+        {
+            player.GetRigidbody().useGravity = true;
+        }
+
+        if (player.grounded)
+        {
+            if (player.isGroundPoundFalling == false)
+            {
+                player.burstSpecial.Play();
+                player.isBounceParry = true;
+            }
+                
+            
+            player.SwitchState(new PlayerJumpPoundState(player));
+        }
+
+    }
+
+    public override void FixedUpdate()
+    {
+        if (player.isGroundPoundFalling == true)
+        {
+            Vector3 fallForce = Vector3.down * (player.fallMultiplier * 5) * Mathf.Abs(Physics.gravity.y);
+            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
+            SmoothScaleBackToNormal();
+        }
+           
+    }
+
+    private void SmoothScaleBackToNormal()
+    {
+        if (isScalingToFall)
+        {
+            // Lerp to fallScale
+            float lerpSpeed = 6f;
+            scaleLerpFactor += Time.fixedDeltaTime * lerpSpeed;
+            scaleLerpFactor = Mathf.Clamp(scaleLerpFactor, 0f, 1f);
+
+            player.transform.localScale = Vector3.Lerp(targetScale, fallScale, scaleLerpFactor);
+
+            if (scaleLerpFactor >= 1f)
+            {
+                // Transition to next phase
+                isScalingToFall = false;
+            }
+        }
+        else
+        {
+            // Lerp back to targetScale
+            float lerpSpeed = 1f;
+            scaleLerpFactor2 += Time.fixedDeltaTime * lerpSpeed;
+            scaleLerpFactor2 = Mathf.Clamp(scaleLerpFactor2, 0f, 1f);
+
+            player.transform.localScale = Vector3.Lerp(fallScale, targetScale, scaleLerpFactor2);
+
+        }
+    }
+}
+
+// JUMP-POUND -----------------------------------------------------------------------------
+
+public class PlayerJumpPoundState : PlayerState
+{
+    private float jumpTimeMax = 2f; // Maximum time the player can hold the jump
+    private float jumpTimeCounter;
+    private float jumpCounterMultiplier = 1.7f;
+
+    private Vector3 targetScale = new Vector3(1f, 1f, 1f);
+    private Vector3 groundScale = new Vector3(1.4f, 0.6f, 1.4f);
+    private Vector3 jumpScale = new Vector3(0.6f, 1.7f, 0.6f);
+    private float scaleLerpFactor = 0f;
+
+    private bool isScalingToJump = true;
+
+    public PlayerJumpPoundState(PlayerMovement player) : base(player) { }
+
+    public override void EnterState()
+    {
+        player.jumpBufferTime = 0;
+
+        player.audioManager.Play("jump");
+        player.burst2.Play();
+        player.burst3.Play();
+        player.jumpBurst.Play();
+
+    
+        player.GetRigidbody().drag = 4f;
+        player.GetRigidbody().velocity = new Vector3(player.GetRigidbody().velocity.x, 0, player.GetRigidbody().velocity.z); // Reset vertical velocity
+        player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier), ForceMode.Impulse);
+        
+        player.anim.SetBool("isJumping", true);
+
+        if (player.isBounceParry == true)
+        {
+            player.PauseImpactStarter(0.2f, 0.3f);
+            player.shakeScript.TriggerShake(4f, 6f, 0.2f);
+            player.anim.SetInteger("jumpState", 6);
+        }
+        else
+        {
+            player.PauseImpactStarter(0.1f, 0.07f);
+            player.shakeScript.TriggerShake(3f, 5f, 0.1f);
+            player.anim.SetInteger("jumpState", 5);
+        }
+
+        
+        player.isBounceParry = false;
+
+        player.grounded = false;
+        jumpTimeCounter = jumpTimeMax;
+
+        player.WaitFramesGround = true;
+        player.StartCoroutine("WaitFramesGroundCoroutine");
+    }
+
+    public override void ExitState() 
+    {
+        player.transform.localScale = targetScale;
+
+        player.anim.SetBool("isJumping", false);
+        player.anim.SetBool("isGroundPounding", false);
+    }
+
+    public override void Update()
+    {
+        if (player.grounded && !player.WaitFramesGround)
+        {
+            player.SwitchState(new PlayerIdleState(player));
+            player.burst2.Play();
+        }
+
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && !player.WaitFramesGround && player.isR2Released)
+        {
+            player.SwitchState(new PlayerGroundPoundState(player));
+        }
+    }
+
+    public override void FixedUpdate()
+    {
+        // MOVE WHILE JUMPING -------------------------------
+
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+        Vector2 input = new Vector2(horizontalInput, verticalInput);
+
+        // Adjust speed based on how much the joystick or key is pressed
+        float speedFactor = Mathf.Clamp(input.magnitude, 0.1f, 1f);
+        Vector3 moveDirection = player.orientation.forward * verticalInput + player.orientation.right * horizontalInput;
+        player.GetRigidbody().AddForce(moveDirection.normalized * player.walkSpeed * speedFactor * 5f, ForceMode.Force);
+
+        // Set animator speed value based on the player's movement speed
+        player.anim.SetFloat("Speed", speedFactor);
+
+        // JUMP ---------------------------------------------
+
+        // Apply extra gravity to fall faster
+        if ((player.GetRigidbody().velocity.y < 0))
+        {
+            Vector3 fallForce = Vector3.down * player.fallMultiplier * Mathf.Abs(Physics.gravity.y);
+            player.GetRigidbody().AddForce(fallForce, ForceMode.Acceleration);
+        }
+
+        // Continue applying upward force if jump is held and time allows
+        if (jumpTimeCounter > 0)
+        {
+            player.GetRigidbody().AddForce(Vector3.up * (player.jumpForce * jumpCounterMultiplier) * 0.5f, ForceMode.Acceleration);
+            jumpTimeCounter -= Time.fixedDeltaTime;
+        }
+
+        SmoothScaleBackToNormal();
+    }
+
+    private void SmoothScaleBackToNormal()
+    {
+        if (isScalingToJump)
+        {
+            // Lerp to jumpScale
+            float lerpSpeed = 6f;
+            scaleLerpFactor += Time.fixedDeltaTime * lerpSpeed;
+            scaleLerpFactor = Mathf.Clamp(scaleLerpFactor, 0f, 1f);
+
+            player.transform.localScale = Vector3.Lerp(groundScale, jumpScale, scaleLerpFactor);
+
+            if (scaleLerpFactor >= 1f)
+            {
+                // Transition to scaling back to target
+                isScalingToJump = false;
+                scaleLerpFactor = 0f; // Reset for the next phase
+            }
+        }
+        else
+        {
+            // Lerp back to targetScale
+            float lerpSpeed = 4f;
+            scaleLerpFactor += Time.fixedDeltaTime * lerpSpeed;
+            scaleLerpFactor = Mathf.Clamp(scaleLerpFactor, 0f, 1f);
+
+            player.transform.localScale = Vector3.Lerp(jumpScale, targetScale, scaleLerpFactor);
+
+        }
+    }
+
+}
+
 // FALLING -----------------------------------------------------------------------------
 
 public class PlayerFallingState : PlayerState
@@ -710,28 +990,38 @@ public class PlayerFallingState : PlayerState
 
     public override void Update()
     {
-        if (player.grounded)
-        {
-            // Check horizontal velocity to determine if we should transition to walking instead of idle
-            if (player.GetRigidbody().velocity.magnitude > 0.1f)
-            {
-                player.SwitchState(new PlayerWalkingState(player));
-            }
-            else
-            {
-                player.SwitchState(new PlayerIdleState(player));
-            }
-        }
-
         if (player.coyoteTime > 0)
         {
-            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump))
+            if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f))
+            {
+                player.SwitchState(new PlayerLongJumpState(player));
+            }
+            else if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump))
             {
                 player.SwitchState(new PlayerJumpingState(player));
             }
-            else if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(player.controllerDetection.jump)) && (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f))
+            
+        }
+        else
+        {
+            if (player.grounded)
             {
-                player.SwitchState(new PlayerLongJumpState(player));
+                // Check horizontal velocity to determine if we should transition to walking instead of idle
+                if (player.GetRigidbody().velocity.magnitude > 0.1f)
+                {
+                    player.SwitchState(new PlayerWalkingState(player));
+                }
+                else
+                {
+                    player.SwitchState(new PlayerIdleState(player));
+                }
+            }
+            else
+            {
+                if ((Input.GetKey(KeyCode.LeftShift) || Input.GetAxis(player.controllerDetection.crouch) > 0.1f) && player.isR2Released)
+                {
+                    player.SwitchState(new PlayerGroundPoundState(player));
+                }
             }
         }
     }
@@ -779,6 +1069,7 @@ public class PlayerCrouchState : PlayerState
     public override void ExitState()
     {
         player.anim.SetBool("isCrouching", false);
+        player.isR2Released = false;
     }
 
     public override void Update()
@@ -836,6 +1127,7 @@ public class PlayerWalkCrouchState : PlayerState
         player.runParticles.Stop();
         player.anim.SetFloat("Speed", 0f);
         player.anim.SetBool("isCrouching", false);
+        player.isR2Released = false;
     }
 
     public override void Update()
