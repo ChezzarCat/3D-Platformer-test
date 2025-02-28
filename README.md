@@ -1,2 +1,2 @@
-# Seven Whispers
- A 3D old-styled horror game where you will need to survive several nightmares while uncovering the story behind them.
+# 3D PLATFORMER MOVEMENT RECREATION
+ A 3D platformer movement test with a lot of juice and movement options, also combable, for everyone to see and use!
